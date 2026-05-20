@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox spacing="20.0" xmlns:fx="http://javafx.com/fxml" fx:controller="com.kamotomo.pos.UsersController" style="-fx-background-color: transparent;">
+
+    <HBox alignment="CENTER_LEFT" spacing="15">
+        <VBox spacing="5">
+            <Label text="USER MANAGEMENT" style="-fx-text-fill: -kmtm-text; -fx-font-family: 'Bebas Neue', sans-serif; -fx-font-size: 28px; -fx-letter-spacing: 1px;"/>
+            <Label text="Manage employee accounts, roles, and system access" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px;"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS" />
+        <Button text="+ Add New User" onAction="#onAddUserClick" style="-fx-background-color: -kmtm-primary; -fx-text-fill: white; -fx-font-family: 'IBM Plex Mono'; -fx-font-weight: bold; -fx-padding: 8 15; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: hand;"/>
+    </HBox>
+
+    <HBox alignment="CENTER_LEFT" spacing="15">
+        <TextField fx:id="searchField" promptText="🔍 Search username..." prefWidth="250" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-font-family: 'IBM Plex Sans';"/>
+        <ComboBox fx:id="roleFilter" prefWidth="150" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-font-family: 'IBM Plex Mono';"/>
+        <Region HBox.hgrow="ALWAYS" />
+        <ToggleButton fx:id="toggleArchiveBtn" text="Show Archived" onAction="#onToggleArchive" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-font-family: 'IBM Plex Mono'; -fx-cursor: hand;"/>
+    </HBox>
+
+    <TableView fx:id="usersTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="colId" text="USER ID" prefWidth="80" />
+            <TableColumn fx:id="colUsername" text="USERNAME" prefWidth="200" />
+            <TableColumn fx:id="colRole" text="ROLE" prefWidth="150" />
+            <TableColumn fx:id="colStatus" text="STATUS" prefWidth="100" />
+            <TableColumn fx:id="colAction" text="ACTIONS" prefWidth="250" />
+        </columns>
+        <columnResizePolicy>
+            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+        </columnResizePolicy>
+    </TableView>
+
+</VBox>

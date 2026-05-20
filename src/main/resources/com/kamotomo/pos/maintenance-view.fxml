@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox spacing="20.0" prefWidth="1000.0" prefHeight="700.0" xmlns:fx="http://javafx.com/fxml" fx:controller="com.kamotomo.pos.MaintenanceController" style="-fx-background-color: transparent;">
+
+    <VBox spacing="5">
+        <Label text="SYSTEM MAINTENANCE" style="-fx-text-fill: -kmtm-text; -fx-font-family: 'Bebas Neue', sans-serif; -fx-font-size: 28px; -fx-letter-spacing: 1px;"/>
+        <Label text="Database backups and system integrity tools" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px;"/>
+    </VBox>
+
+    <HBox spacing="20" VBox.vgrow="ALWAYS">
+        <VBox spacing="15" style="-fx-background-color: -kmtm-surface; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 25;" HBox.hgrow="ALWAYS">
+            <Label text="DATABASE BACKUP" style="-fx-text-fill: -kmtm-primary; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 14px; -fx-font-weight: bold;"/>
+            <Label text="Generate a complete snapshot of all inventory, users, and transaction records. Store this file securely off-site (e.g., Google Drive or a USB flash drive) to prevent data loss in case of hardware failure." wrapText="true" style="-fx-text-fill: -kmtm-text-dim; -fx-font-size: 13px; -fx-line-spacing: 4px;"/>
+
+            <Region VBox.vgrow="ALWAYS"/>
+
+            <Button text="💾 Generate Local Backup (.sql)" onAction="#onBackupDatabase" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-cursor: hand; -fx-padding: 10 20; -fx-font-weight: bold;"/>
+        </VBox>
+
+        <VBox spacing="15" style="-fx-background-color: -kmtm-surface; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 25;" HBox.hgrow="ALWAYS">
+            <Label text="DATABASE RESTORE" style="-fx-text-fill: #f03d3d; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 14px; -fx-font-weight: bold;"/>
+            <Label text="WARNING: Importing a backup file will permanently overwrite all current system data. Only perform this action if the database has been corrupted or you are migrating to a new computer." wrapText="true" style="-fx-text-fill: -kmtm-text-dim; -fx-font-size: 13px; -fx-line-spacing: 4px;"/>
+
+            <Region VBox.vgrow="ALWAYS"/>
+
+            <Button text="⚠ Import Backup File" onAction="#onRestoreDatabase" style="-fx-background-color: rgba(240,61,61,0.15); -fx-text-fill: #f03d3d; -fx-border-color: #f03d3d; -fx-border-radius: 4; -fx-cursor: hand; -fx-padding: 10 20; -fx-font-weight: bold;"/>
+        </VBox>
+    </HBox>
+</VBox>

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<HBox spacing="20" style="-fx-background-color: transparent; -fx-padding: 20;" xmlns:fx="http://javafx.com/fxml" fx:controller="com.kamotomo.pos.PosController">
+
+    <VBox spacing="15" HBox.hgrow="ALWAYS">
+
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <TextField fx:id="searchField" onAction="#onSearchEnterPressed" promptText="🔍 Scan barcode or search..." HBox.hgrow="ALWAYS" style="-fx-background-color: -kmtm-surface; -fx-text-fill: -kmtm-text; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-padding: 10 15; -fx-font-family: 'IBM Plex Sans';"/>        </HBox>
+
+        <FlowPane hgap="8" vgap="8">
+            <Button text="All" onAction="#onCategoryClick" styleClass="category-btn" />
+            <Button text="Engine Parts" onAction="#onCategoryClick" styleClass="category-btn" />
+            <Button text="Brakes" onAction="#onCategoryClick" styleClass="category-btn" />
+            <Button text="Tires &amp; Wheels" onAction="#onCategoryClick" styleClass="category-btn" />
+            <Button text="Electrical" onAction="#onCategoryClick" styleClass="category-btn" />
+            <Button text="Filters" onAction="#onCategoryClick" styleClass="category-btn" />
+            <Button text="Suspension" onAction="#onCategoryClick" styleClass="category-btn" />
+            <Button text="Exhaust" onAction="#onCategoryClick" styleClass="category-btn" />
+            <Button text="Lubricants &amp; Fluids" onAction="#onCategoryClick" styleClass="category-btn" />
+            <Button text="Body Parts" onAction="#onCategoryClick" styleClass="category-btn" />
+            <Button text="Accessories" onAction="#onCategoryClick" styleClass="category-btn" />
+        </FlowPane>
+
+        <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: transparent;" VBox.vgrow="ALWAYS">
+            <TilePane fx:id="productGrid" hgap="15" vgap="15" prefColumns="4" />
+        </ScrollPane>
+    </VBox>
+
+    <VBox prefWidth="380" spacing="15" style="-fx-background-color: -kmtm-surface; -fx-border-color: -kmtm-border; -fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 20;">
+
+        <HBox alignment="CENTER_LEFT">
+            <Label text="CURRENT ORDER" style="-fx-text-fill: -kmtm-text; -fx-font-family: 'Bebas Neue', sans-serif; -fx-font-size: 24px; -fx-letter-spacing: 1px;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="Clear Cart" onAction="#onClearCartClick" style="-fx-background-color: transparent; -fx-text-fill: -kmtm-text-dim; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-padding: 5 10; -fx-cursor: hand; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px;"/>
+        </HBox>
+
+        <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: transparent;" VBox.vgrow="ALWAYS">
+            <VBox fx:id="cartContainer" spacing="8" />
+        </ScrollPane>
+
+        <VBox spacing="15" style="-fx-border-color: -kmtm-border transparent transparent transparent; -fx-border-width: 1 0 0 0; -fx-padding: 15 0 0 0;">
+
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label text="Discount:" minWidth="-Infinity" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px;"/>
+                <TextField fx:id="discountField" promptText="0.00" prefWidth="65" styleClass="text-field"/>
+                <ComboBox fx:id="discountTypeBox" prefWidth="100" style="-fx-padding: 0 5 0 10;" styleClass="combo-box"/>
+                <ComboBox fx:id="discountReasonBox" promptText="Reason" editable="true" HBox.hgrow="ALWAYS" maxWidth="Infinity" styleClass="combo-box"/>
+            </HBox>
+
+            <HBox alignment="CENTER_LEFT">
+                <Label text="Subtotal:" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 13px;"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="originalTotalLabel" text="₱0.00" style="-fx-text-fill: -kmtm-text-muted; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 13px;"/>
+            </HBox>
+            <HBox alignment="CENTER_LEFT">
+                <Label text="TOTAL DUE:" style="-fx-text-fill: -kmtm-primary; -fx-font-family: 'Bebas Neue', sans-serif; -fx-font-size: 28px;"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="totalLabel" text="₱0.00" style="-fx-text-fill: -kmtm-primary; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 28px; -fx-font-weight: bold;"/>
+            </HBox>
+
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Button fx:id="btnCash" text="💵 Cash" onAction="#onCashToggleClick" prefWidth="160" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-primary; -fx-border-color: -kmtm-primary; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: hand; -fx-padding: 10; -fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold;"/>
+                <Button fx:id="btnGCash" text="📱 GCash" onAction="#onGCashToggleClick" prefWidth="160" style="-fx-background-color: -kmtm-surface; -fx-text-fill: -kmtm-text-dim; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: hand; -fx-padding: 10; -fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold;"/>
+            </HBox>
+
+            <VBox fx:id="cashInputContainer" spacing="5">
+                <Label text="Cash Tendered (₱):" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px;"/>
+                <TextField fx:id="cashTenderedField" promptText="0.00" styleClass="text-field" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-padding: 10;"/>
+                <Label fx:id="changeLabel" style="-fx-font-family: 'IBM Plex Mono'; -fx-font-size: 14px; -fx-font-weight: bold;"/>
+            </VBox>
+
+            <VBox fx:id="gcashInputContainer" spacing="5" managed="false" visible="false">
+                <Label text="GCash Ref No. (13 Digits):" style="-fx-text-fill: #007DFE; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px; -fx-font-weight: bold;"/>
+                <TextField fx:id="gcashRefField" promptText="Enter Ref Number" styleClass="text-field" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-padding: 10;"/>
+            </VBox>
+
+            <Button text="Complete Sale" onAction="#onCompleteSaleClick" maxWidth="Infinity" style="-fx-background-color: -kmtm-primary; -fx-text-fill: white; -fx-font-family: 'IBM Plex Sans', sans-serif; -fx-font-size: 16px; -fx-font-weight: bold; -fx-padding: 15; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: hand;"/>
+        </VBox>
+    </VBox>
+</HBox>

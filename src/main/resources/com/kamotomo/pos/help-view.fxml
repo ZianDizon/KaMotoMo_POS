@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox spacing="20.0" prefWidth="1000.0" prefHeight="700.0" xmlns:fx="http://javafx.com/fxml" fx:controller="com.kamotomo.pos.HelpController" style="-fx-background-color: transparent;">
+
+    <VBox spacing="5">
+        <Label text="HELP &amp; SUPPORT" style="-fx-text-fill: -kmtm-text; -fx-font-family: 'Bebas Neue', sans-serif; -fx-font-size: 28px; -fx-letter-spacing: 1px;"/>
+        <Label text="Comprehensive System Manual and Operating Procedures" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px;"/>
+    </VBox>
+
+    <ScrollPane fitToWidth="true" style="-fx-background: transparent; -fx-background-color: transparent; -fx-border-color: transparent;" VBox.vgrow="ALWAYS">
+        <Accordion style="-fx-background-color: transparent;">
+            <panes>
+                <TitledPane text="[POS] How do I process a Cash or GCash transaction?" style="-fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold;">
+                    <VBox spacing="10" style="-fx-background-color: -kmtm-surface2; -fx-padding: 15;">
+                        <Label text="1. Search for the product using the barcode or name in the search bar. Press Enter to fast-add." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="2. Adjust quantities in the cart using the '+' and '-' buttons." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="3. If applicable, select a Discount Type (% or ₱), input the value, and select a reason." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="4. Select the payment method (Cash or GCash)." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="   - Cash: Enter the amount tendered. The system calculates exact change." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="   - GCash: Enter the 13-digit Reference Number from the customer's phone." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="5. Click 'Complete Transaction' to finalize the sale and print the thermal receipt." style="-fx-text-fill: -kmtm-text;"/>
+                    </VBox>
+                </TitledPane>
+
+                <TitledPane text="[Inventory] How do I search and filter products?" style="-fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold;">
+                    <VBox spacing="10" style="-fx-background-color: -kmtm-surface2; -fx-padding: 15;">
+                        <Label text="The Inventory tab provides a live look at all store items." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="• Use the dropdown menu to filter by Category (e.g., 'Engine Parts', 'Lubricants')." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="• Use the Search Bar to look up specific items by Name or SKU." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="• Keep an eye on the Status badges: IN STOCK, LOW, or CRITICAL." style="-fx-text-fill: -kmtm-text;"/>
+                    </VBox>
+                </TitledPane>
+
+                <TitledPane text="[Stock Monitor] What do 'Critical' and 'Low' stock levels mean?" style="-fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold;">
+                    <VBox spacing="10" style="-fx-background-color: -kmtm-surface2; -fx-padding: 15;">
+                        <Label text="The system uses an automated Reorder Point (ROP) algorithm." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="• LOW Stock (Yellow): The item has hit the reorder threshold. Notify management to draft an order soon." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="• CRITICAL Stock (Red): The item has dropped to dangerously low levels. Immediate restock required to prevent lost sales." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="• OK Stock (Green): Inventory is healthy." style="-fx-text-fill: -kmtm-text;"/>
+                    </VBox>
+                </TitledPane>
+
+                <TitledPane fx:id="adminPaneInventory" text="⚙ [ADMIN] Adding, Editing, and Archiving Products" style="-fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold; -fx-text-fill: -kmtm-primary;">
+                    <VBox spacing="10" style="-fx-background-color: -kmtm-surface2; -fx-padding: 15; -fx-border-color: -kmtm-primary; -fx-border-width: 0 0 0 4;">
+                        <Label text="Adding/Editing:" style="-fx-text-fill: -kmtm-primary; -fx-font-weight: bold;"/>
+                        <Label text="1. Navigate to the Inventory tab and click '+ Add New Product' (or 'Edit' on an existing row)." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="2. Input the exact Name, Category, Price, and current physical Stock." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="Archiving:" style="-fx-text-fill: -kmtm-primary; -fx-font-weight: bold;"/>
+                        <Label text="To preserve historical transaction data, products cannot be hard-deleted. Click 'Archive' to hide them from the POS screen." style="-fx-text-fill: -kmtm-text;"/>
+                    </VBox>
+                </TitledPane>
+
+                <TitledPane fx:id="adminPaneUsers" text="⚙ [ADMIN] Managing Employee Access &amp; Passwords" style="-fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold; -fx-text-fill: -kmtm-primary;">
+                    <VBox spacing="10" style="-fx-background-color: -kmtm-surface2; -fx-padding: 15; -fx-border-color: -kmtm-primary; -fx-border-width: 0 0 0 4;">
+                        <Label text="• Creating Users: Go to the Users tab. Assign 'Employee' for standard POS access, or 'Admin' for full system control." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="• Resetting Passwords: If an employee forgets their login, click 'Reset Pass'. It will default to '1234'." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="• Archiving: When an employee leaves the company, Archive their account to immediately revoke system access." style="-fx-text-fill: -kmtm-text;"/>
+                    </VBox>
+                </TitledPane>
+
+                <TitledPane fx:id="adminPaneLogs" text="⚙ [ADMIN] Reading and Exporting System Logs" style="-fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold; -fx-text-fill: -kmtm-primary;">
+                    <VBox spacing="10" style="-fx-background-color: -kmtm-surface2; -fx-padding: 15; -fx-border-color: -kmtm-primary; -fx-border-width: 0 0 0 4;">
+                        <Label text="Every action (logins, sales, edits) is permanently recorded in the System Logs tab for security auditing." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="• Receipt Viewer: Next to 'Transaction' logs, click '📄 Receipt' to pull up an exact digital copy of the sale." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="• Exporting: Click 'Export Logs' to download a .CSV spreadsheet. This can be opened in Microsoft Excel or Google Sheets for advanced sorting." style="-fx-text-fill: -kmtm-text;"/>
+                    </VBox>
+                </TitledPane>
+
+                <TitledPane fx:id="adminPaneMaintenance" text="⚙ [ADMIN] Database Backups and Maintenance" style="-fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold; -fx-text-fill: -kmtm-primary;">
+                    <VBox spacing="10" style="-fx-background-color: -kmtm-surface2; -fx-padding: 15; -fx-border-color: -kmtm-primary; -fx-border-width: 0 0 0 4;">
+                        <Label text="It is CRITICAL to back up the database weekly to prevent data loss in the event of hardware failure." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="1. Go to the Maintenance tab and click 'Generate Local Backup'." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="2. Save the .sql file to an external USB Drive or Cloud Storage (e.g., Google Drive)." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="3. If the computer breaks, this file contains everything needed to perfectly restore the shop's operations on a new PC." style="-fx-text-fill: -kmtm-text;"/>
+                    </VBox>
+                </TitledPane>
+
+            </panes>
+        </Accordion>
+    </ScrollPane>
+</VBox>

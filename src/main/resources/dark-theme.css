@@ -1,0 +1,361 @@
+.root {
+    -kmtm-bg: #0d0f10;
+    -kmtm-surface: #151819;
+    -kmtm-surface2: #1e2224;
+    -kmtm-border: #2e3538;
+    -kmtm-text: #e8eaeb;
+    -kmtm-text-dim: #7c8a8e;
+    -kmtm-text-muted: #4a5558;
+    -kmtm-primary: #f5620f;
+    -kmtm-primary-glow: rgba(245,98,15,0.15);
+}
+
+/* =========================================
+   PREMIUM TABLE VIEW STYLING
+   ========================================= */
+.table-view {
+    -fx-background-color: transparent;
+    -fx-border-color: #2a2e33;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 1;
+}
+.table-view .column-header-background {
+    -fx-background-color: #0d0f10;
+    -fx-background-radius: 8 8 0 0;
+    -fx-border-color: transparent transparent #2a2e33 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-size: 40;
+}
+.table-view .column-header .label {
+    -fx-text-fill: #6c757d;
+    -fx-font-family: 'IBM Plex Mono';
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-letter-spacing: 1px;
+    -fx-alignment: CENTER-LEFT;
+    -fx-padding: 0 0 0 10;
+}
+.table-row-cell {
+    -fx-background-color: #15181a;
+    -fx-border-color: transparent transparent #2a2e33 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-cell-size: 55;
+}
+.table-row-cell:odd {
+    -fx-background-color: #0d0f10;
+}
+.table-row-cell:hover {
+    -fx-background-color: #1c2024;
+}
+.table-row-cell:selected {
+    -fx-background-color: #1a150b;
+}
+.table-cell {
+    -fx-text-fill: #e9ecef;
+    -fx-alignment: CENTER-LEFT;
+    -fx-font-family: 'IBM Plex Sans', sans-serif;
+    -fx-font-size: 13px;
+    -fx-border-color: transparent;
+    -fx-padding: 0 0 0 10;
+}
+.table-view .scroll-bar:vertical {
+    -fx-background-color: transparent;
+}
+.table-view .scroll-bar:vertical .thumb {
+    -fx-background-color: #2a2e33;
+    -fx-background-radius: 4;
+}
+.table-view .filler, .table-view .column-header-background .filler {
+    -fx-background-color: -kmtm-bg;
+}
+
+/* =========================================
+   CUSTOM BORDERLESS DIALOG & HEADER
+   ========================================= */
+.custom-dialog {
+    -fx-background-color: #151819;
+    -fx-border-color: -kmtm-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+.dialog-header {
+    -fx-padding: 15 20;
+    -fx-border-color: transparent transparent -kmtm-border transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-background-color: transparent;
+}
+.dialog-title {
+    -fx-font-family: 'Bebas Neue', sans-serif;
+    -fx-font-size: 22px;
+    -fx-text-fill: -kmtm-text;
+    -fx-letter-spacing: 1px;
+}
+.dialog-close-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: -kmtm-text-dim;
+    -fx-font-size: 16px;
+    -fx-cursor: hand;
+    -fx-padding: 0;
+}
+.dialog-close-btn:hover {
+    -fx-text-fill: -kmtm-primary;
+}
+
+/* DIALOG INPUTS & BUTTONS */
+.custom-dialog .label {
+    -fx-text-fill: -kmtm-text-dim;
+    -fx-font-family: 'IBM Plex Mono';
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+.custom-dialog .text-field, .custom-dialog .combo-box {
+    -fx-background-color: #0d0f10;
+    -fx-text-fill: -kmtm-text;
+    -fx-border-color: -kmtm-border;
+    -fx-border-radius: 4;
+    -fx-padding: 8 12;
+    -fx-font-family: 'IBM Plex Mono';
+}
+.custom-dialog .button-bar .button {
+    -fx-font-family: 'IBM Plex Mono';
+    -fx-padding: 8 20;
+    -fx-cursor: hand;
+}
+.custom-dialog .button-bar .button:default {
+    -fx-background-color: -kmtm-primary;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+.custom-dialog .button-bar .button:cancel {
+    -fx-background-color: -kmtm-surface2;
+    -fx-text-fill: -kmtm-text;
+    -fx-border-color: -kmtm-border;
+}
+
+/* =========================================
+   DASHBOARD CHART STYLING
+   ========================================= */
+.chart {
+    -fx-padding: 10px;
+}
+.chart-plot-background {
+    -fx-background-color: transparent;
+}
+.chart-vertical-grid-lines {
+    -fx-stroke: transparent;
+}
+.chart-horizontal-grid-lines {
+    -fx-stroke: -kmtm-border;
+    -fx-stroke-dash-array: 2 4; /* Makes the grid lines dotted */
+}
+.chart-bar {
+    -fx-bar-fill: -kmtm-primary; /* Makes the bars our brand orange */
+}
+.axis {
+    -fx-tick-label-font-family: 'IBM Plex Mono';
+    -fx-tick-label-font-size: 10px;
+    -fx-tick-label-fill: -kmtm-text-dim; /* <-- Add this line! */
+}
+.axis-minor-tick-mark, .axis-tick-mark {
+    -fx-stroke: transparent;
+}
+
+/* =========================================
+   POS CATEGORY BUTTONS
+   ========================================= */
+.category-btn {
+    -fx-background-color: -kmtm-surface2;
+    -fx-text-fill: -kmtm-text-dim;
+    -fx-border-color: -kmtm-border;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 8 16;
+    -fx-cursor: hand;
+    -fx-font-family: 'IBM Plex Mono';
+}
+.category-btn:hover {
+    -fx-background-color: -kmtm-primary-glow;
+    -fx-text-fill: -kmtm-primary;
+    -fx-border-color: -kmtm-primary;
+}
+
+/* =========================================
+   UNIFIED COMBOBOX STYLING
+   ========================================= */
+/* The main box wrapper */
+.combo-box {
+    -fx-background-color: -kmtm-surface2;
+    -fx-border-color: -kmtm-border;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+/* The selected text (Closed state) */
+.combo-box > .list-cell {
+    -fx-text-fill: -kmtm-text;
+    -fx-font-family: 'IBM Plex Mono';
+    -fx-background-color: transparent;
+}
+
+/* The text field for EDITABLE combo boxes (Discount Reason) */
+.combo-box > .text-field {
+    -fx-text-fill: -kmtm-text;
+    -fx-font-family: 'IBM Plex Mono';
+    -fx-background-color: transparent;
+}
+
+/* The dropdown popup background */
+.combo-box-popup .list-view {
+    -fx-background-color: -kmtm-surface;
+    -fx-border-color: -kmtm-border;
+}
+
+/* The items inside the dropdown */
+.combo-box-popup .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -kmtm-text;
+    -fx-font-family: 'IBM Plex Mono';
+    -fx-padding: 8 12;
+}
+
+/* Hover and Selected states inside the dropdown */
+.combo-box-popup .list-cell:hover,
+.combo-box-popup .list-cell:filled:selected {
+    -fx-background-color: -kmtm-primary-glow;
+    -fx-text-fill: -kmtm-primary;
+}
+
+/* =========================================
+   STOCK MONITOR STYLING
+   ========================================= */
+/* Filter Toggle Buttons */
+.filter-toggle {
+    -fx-background-color: transparent;
+    -fx-text-fill: -kmtm-text-dim;
+    -fx-border-color: -kmtm-border;
+    -fx-border-radius: 4;
+    -fx-padding: 8 16;
+    -fx-cursor: hand;
+    -fx-font-family: 'IBM Plex Mono';
+    -fx-font-size: 11px;
+}
+.filter-toggle:selected {
+    -fx-background-color: -kmtm-surface2;
+    -fx-border-color: -kmtm-primary;
+    -fx-text-fill: -kmtm-primary;
+}
+
+/* Status Badges */
+.badge {
+    -fx-padding: 4 8;
+    -fx-background-radius: 4;
+    -fx-font-family: 'IBM Plex Mono';
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-alignment: center;
+}
+.badge-critical {
+    -fx-background-color: rgba(240, 61, 61, 0.15);
+    -fx-text-fill: #f03d3d;
+    -fx-border-color: rgba(240, 61, 61, 0.3);
+    -fx-border-radius: 4;
+}
+.badge-low {
+    -fx-background-color: rgba(234, 179, 8, 0.15);
+    -fx-text-fill: #eab308;
+    -fx-border-color: rgba(234, 179, 8, 0.3);
+    -fx-border-radius: 4;
+}
+.badge-ok {
+    -fx-background-color: rgba(58, 223, 138, 0.15);
+    -fx-text-fill: #3adf8a;
+    -fx-border-color: rgba(58, 223, 138, 0.3);
+    -fx-border-radius: 4;
+}
+
+/* Category Pill (Grey box in category column) */
+.category-pill {
+    -fx-background-color: -kmtm-surface2;
+    -fx-text-fill: -kmtm-text-dim;
+    -fx-padding: 4 8;
+    -fx-background-radius: 4;
+    -fx-font-family: 'IBM Plex Mono';
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+/* Custom Action Button */
+.action-btn {
+    -fx-background-color: transparent;
+    -fx-border-color: -kmtm-border;
+    -fx-text-fill: -kmtm-text;
+    -fx-border-radius: 4;
+    -fx-padding: 5 15;
+    -fx-cursor: hand;
+    -fx-font-family: 'IBM Plex Mono';
+    -fx-font-size: 11px;
+}
+.action-btn:hover {
+    -fx-background-color: -kmtm-surface2;
+    -fx-border-color: -kmtm-primary;
+}
+
+/* --- LOGIN SCREEN STYLES --- */
+.login-card {
+    -fx-background-color: -kmtm-surface;
+    -fx-border-color: -kmtm-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 40;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 20, 0, 0, 10);
+}
+
+.login-title {
+    -fx-text-fill: -kmtm-primary;
+    -fx-font-family: 'Bebas Neue', sans-serif;
+    -fx-font-size: 46px;
+    -fx-letter-spacing: 2px;
+}
+
+.login-subtitle {
+    -fx-text-fill: -kmtm-text-dim;
+    -fx-font-family: 'IBM Plex Mono';
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-letter-spacing: 1px;
+}
+
+.login-label {
+    -fx-text-fill: -kmtm-text-dim;
+    -fx-font-family: 'IBM Plex Mono';
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.login-input {
+    -fx-background-color: -kmtm-surface2;
+    -fx-text-fill: -kmtm-text;
+    -fx-border-color: -kmtm-border;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 12;
+    -fx-font-family: 'IBM Plex Sans';
+}
+
+.login-btn {
+    -fx-background-color: -kmtm-primary;
+    -fx-text-fill: white;
+    -fx-font-family: 'IBM Plex Sans';
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-padding: 12;
+    -fx-cursor: hand;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}

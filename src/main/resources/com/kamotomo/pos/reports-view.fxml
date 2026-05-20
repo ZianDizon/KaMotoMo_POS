@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.chart.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox spacing="20.0" xmlns:fx="http://javafx.com/fxml" fx:controller="com.kamotomo.pos.ReportsController" style="-fx-background-color: transparent;">
+
+    <HBox alignment="CENTER_LEFT" spacing="15">
+        <VBox spacing="5">
+            <Label text="REPORTS &amp; ANALYTICS" style="-fx-text-fill: -kmtm-text; -fx-font-family: 'Bebas Neue', sans-serif; -fx-font-size: 28px; -fx-letter-spacing: 1px;"/>
+            <Label text="Sales performance and AI-driven Market Basket Analysis" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px;"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS" />
+        <ComboBox fx:id="timeframeBox" prefWidth="150" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-font-family: 'IBM Plex Mono';"/>
+        <Button text="🖨 Export Report" onAction="#onExportReport" style="-fx-background-color: -kmtm-primary; -fx-text-fill: white; -fx-font-family: 'IBM Plex Mono'; -fx-font-weight: bold; -fx-padding: 8 15; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: hand;"/>
+    </HBox>
+
+    <HBox spacing="15">
+        <VBox style="-fx-background-color: -kmtm-surface; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 15;" HBox.hgrow="ALWAYS">
+            <Label text="GROSS REVENUE" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px; -fx-letter-spacing: 1px;"/>
+            <Label fx:id="lblRevenue" text="₱0.00" style="-fx-text-fill: #3adf8a; -fx-font-family: 'Bebas Neue', sans-serif; -fx-font-size: 36px;"/>
+        </VBox>
+        <VBox style="-fx-background-color: -kmtm-surface; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 15;" HBox.hgrow="ALWAYS">
+            <Label text="TOTAL TRANSACTIONS" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px; -fx-letter-spacing: 1px;"/>
+            <Label fx:id="lblTransactions" text="0" style="-fx-text-fill: -kmtm-text; -fx-font-family: 'Bebas Neue', sans-serif; -fx-font-size: 36px;"/>
+        </VBox>
+        <VBox style="-fx-background-color: -kmtm-surface; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 15;" HBox.hgrow="ALWAYS">
+            <Label text="ITEMS SOLD" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px; -fx-letter-spacing: 1px;"/>
+            <Label fx:id="lblItemsSold" text="0" style="-fx-text-fill: -kmtm-text; -fx-font-family: 'Bebas Neue', sans-serif; -fx-font-size: 36px;"/>
+        </VBox>
+        <VBox style="-fx-background-color: -kmtm-surface; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 15;" HBox.hgrow="ALWAYS">
+            <Label text="TOTAL DISCOUNTS GIVEN" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px; -fx-letter-spacing: 1px;"/>
+            <Label fx:id="lblDiscounts" text="₱0.00" style="-fx-text-fill: #f03d3d; -fx-font-family: 'Bebas Neue', sans-serif; -fx-font-size: 36px;"/>
+        </VBox>
+    </HBox>
+
+    <HBox spacing="15" VBox.vgrow="ALWAYS">
+
+        <VBox style="-fx-background-color: -kmtm-surface; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 15;" HBox.hgrow="ALWAYS">
+            <Label text="TOP 5 BEST SELLING ITEMS" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px; -fx-letter-spacing: 1px;"/>
+            <BarChart fx:id="topSellersChart" animated="true" legendVisible="false" VBox.vgrow="ALWAYS">
+                <xAxis><CategoryAxis fx:id="xAxis" animated="false" /></xAxis>
+                <yAxis><NumberAxis fx:id="yAxis" animated="false" label="Units Sold"/></yAxis>
+            </BarChart>
+        </VBox>
+
+        <VBox style="-fx-background-color: -kmtm-surface; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 15;" prefWidth="450">
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Label text="✨ SMART INSIGHTS" style="-fx-text-fill: #8b5cf6; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px; -fx-font-weight: bold; -fx-letter-spacing: 1px;"/>
+                <Label text="(Apriori Algorithm)" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 10px;"/>
+            </HBox>
+            <Label text="Frequently co-purchased items based on transaction history." style="-fx-text-fill: -kmtm-text-muted; -fx-font-family: 'IBM Plex Sans'; -fx-font-size: 12px; -fx-padding: 5 0 10 0;"/>
+
+            <TableView fx:id="aprioriTable" VBox.vgrow="ALWAYS">
+                <columns>
+                    <TableColumn fx:id="colItemA" text="ITEM A" prefWidth="150" />
+                    <TableColumn fx:id="colPlus" text="+" prefWidth="30" style="-fx-alignment: CENTER; -fx-text-fill: -kmtm-text-dim;" />
+                    <TableColumn fx:id="colItemB" text="ITEM B" prefWidth="150" />
+                    <TableColumn fx:id="colFreq" text="BOUGHT TOGETHER" prefWidth="120" style="-fx-alignment: CENTER;" />
+                </columns>
+                <columnResizePolicy>
+                    <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+                </columnResizePolicy>
+            </TableView>
+        </VBox>
+
+    </HBox>
+
+</VBox>

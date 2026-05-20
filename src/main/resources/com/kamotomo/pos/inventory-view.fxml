@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.cell.PropertyValueFactory?>
+
+<VBox spacing="16.0" xmlns:fx="http://javafx.com/fxml" fx:controller="com.kamotomo.pos.InventoryController"
+      style="-fx-background-color: -kmtm-bg; -fx-padding: 28;">
+
+    <BorderPane>
+        <left>
+            <VBox>
+                <Label text="Inventory" style="-fx-text-fill: -kmtm-text; -fx-font-family: 'Bebas Neue', sans-serif; -fx-font-size: 36px; -fx-letter-spacing: 1px;"/>
+                <Label text="Motor parts catalog" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono', monospace; -fx-font-size: 11px;"/>
+            </VBox>
+        </left>
+        <right>
+            <HBox spacing="8" alignment="BOTTOM_RIGHT">
+                <Button fx:id="toggleArchiveBtn" text="Show Archived" onAction="#onToggleArchiveClick" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 13px; -fx-padding: 9 14; -fx-cursor: hand;"/>
+                <Button fx:id="btnAddProduct" text="+ Add Product" onAction="#onAddProductClick" style="-fx-background-color: -kmtm-primary; -fx-text-fill: white; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 9 14; -fx-background-radius: 4; -fx-cursor: hand;"/>
+            </HBox>
+        </right>
+    </BorderPane>
+
+    <HBox spacing="12.0">
+        <TextField fx:id="searchField" promptText="Search by name or ID..." HBox.hgrow="ALWAYS" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-padding: 9 14; -fx-font-family: 'IBM Plex Mono';"/>
+        <ComboBox fx:id="categoryFilter" promptText="All Categories" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-padding: 4 14; -fx-font-family: 'IBM Plex Mono';"/>
+    </HBox>
+
+    <TableView fx:id="inventoryTable" VBox.vgrow="ALWAYS" style="-fx-background-color: -kmtm-surface; -fx-border-color: -kmtm-border; -fx-border-radius: 8;">
+        <columns>
+            <TableColumn fx:id="colId" text="ID" prefWidth="80">
+                <cellValueFactory><PropertyValueFactory property="id" /></cellValueFactory>
+            </TableColumn>
+            <TableColumn fx:id="colName" text="NAME" prefWidth="250">
+                <cellValueFactory><PropertyValueFactory property="name" /></cellValueFactory>
+            </TableColumn>
+            <TableColumn fx:id="colCategory" text="CATEGORY" prefWidth="150">
+                <cellValueFactory><PropertyValueFactory property="category" /></cellValueFactory>
+            </TableColumn>
+            <TableColumn fx:id="colPrice" text="PRICE" prefWidth="100">
+                <cellValueFactory><PropertyValueFactory property="price" /></cellValueFactory>
+            </TableColumn>
+            <TableColumn fx:id="colStock" text="STOCK" prefWidth="80">
+                <cellValueFactory><PropertyValueFactory property="stock" /></cellValueFactory>
+            </TableColumn>
+            <TableColumn fx:id="colStatus" text="STATUS" prefWidth="100" />
+            <TableColumn fx:id="colActions" text="ACTIONS" prefWidth="150" />
+        </columns>
+    </TableView>
+
+</VBox>

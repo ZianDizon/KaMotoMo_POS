@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<HBox xmlns:fx="http://javafx.com/fxml" fx:controller="com.kamotomo.pos.DashboardController" style="-fx-background-color: -kmtm-bg;">
+
+    <VBox style="-fx-background-color: -kmtm-surface; -fx-border-color: transparent -kmtm-border transparent transparent; -fx-border-width: 0 1 0 0;" prefWidth="260">
+
+        <VBox alignment="CENTER_LEFT" spacing="2" style="-fx-padding: 20 25 20 25;">
+            <Label text="KAMOTOMO" style="-fx-text-fill: -kmtm-primary; -fx-font-family: 'Bebas Neue', sans-serif; -fx-font-size: 36px; -fx-letter-spacing: 1px;"/>
+            <Label text="MANAGEMENT SYSTEM" style="-fx-text-fill: -kmtm-text-muted; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 10px; -fx-letter-spacing: 3px;"/>
+        </VBox>
+
+        <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-padding: 10 25 20 25; -fx-border-color: transparent transparent -kmtm-border transparent; -fx-border-width: 0 0 1 0;">
+            <Label fx:id="avatarLabel" text="A" style="-fx-background-color: transparent; -fx-border-color: -kmtm-primary; -fx-border-width: 2; -fx-border-radius: 50; -fx-background-radius: 50; -fx-min-width: 45; -fx-min-height: 45; -fx-alignment: center; -fx-text-fill: -kmtm-primary; -fx-font-weight: bold; -fx-font-size: 20px; -fx-font-family: 'Bebas Neue', sans-serif;"/>
+            <VBox alignment="CENTER_LEFT" spacing="2">
+                <Label fx:id="userNameLabel" text="Admin User" style="-fx-text-fill: -kmtm-text; -fx-font-family: 'IBM Plex Sans', sans-serif; -fx-font-weight: bold; -fx-font-size: 15px;"/>
+                <Label fx:id="userRoleLabel" text="ADMINISTRATOR" style="-fx-text-fill: -kmtm-primary; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 10px; -fx-font-weight: bold; -fx-letter-spacing: 1px;"/>
+            </VBox>
+        </HBox>
+
+        <VBox spacing="2" VBox.vgrow="ALWAYS" style="-fx-padding: 15 0 0 0;">
+
+            <Label text="OVERVIEW" style="-fx-text-fill: -kmtm-text-muted; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 10px; -fx-letter-spacing: 2px; -fx-padding: 5 0 5 25;"/>
+            <Button fx:id="overviewBtn" text="📊  Dashboard" onAction="#onOverviewButtonClick" alignment="BASELINE_LEFT" maxWidth="Infinity" />
+
+            <Label text="OPERATIONS" style="-fx-text-fill: -kmtm-text-muted; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 10px; -fx-letter-spacing: 2px; -fx-padding: 15 0 5 25;"/>
+            <Button fx:id="posBtn" text="🛒  Point of Sale" onAction="#onPosButtonClick" alignment="BASELINE_LEFT" maxWidth="Infinity" />
+            <Button fx:id="inventoryBtn" text="📦  Inventory" onAction="#onInventoryButtonClick" alignment="BASELINE_LEFT" maxWidth="Infinity" />
+            <Button fx:id="stockMonitorBtn" text="📉  Stock Monitor" onAction="#onStockMonitorButtonClick" alignment="BASELINE_LEFT" maxWidth="Infinity" />
+
+            <Label fx:id="adminSectionLabel" text="ADMIN" style="-fx-text-fill: -kmtm-text-muted; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 10px; -fx-letter-spacing: 2px; -fx-padding: 15 0 5 25;"/>
+            <Button fx:id="reportsBtn" text="📋  Reports" onAction="#onReportsButtonClick" alignment="BASELINE_LEFT" maxWidth="Infinity" />
+            <Button fx:id="usersBtn" text="👤  Users" onAction="#onUsersButtonClick" alignment="BASELINE_LEFT" maxWidth="Infinity" />
+            <Button fx:id="logsBtn" text="📁  System Logs" onAction="#onLogsButtonClick" alignment="BASELINE_LEFT" maxWidth="Infinity" />
+            <Button fx:id="maintenanceBtn" text="🔧  Maintenance" onAction="#onMaintenanceButtonClick" alignment="BASELINE_LEFT" maxWidth="Infinity" />
+            <Button fx:id="helpBtn" text="💬 Help &amp; Support" onAction="#onHelpButtonClick" alignment="BASELINE_LEFT" maxWidth="Infinity"/>
+        </VBox>
+
+        <VBox spacing="10" style="-fx-padding: 20 25 20 25;">
+            <Button text="🌓  Toggle Theme" onAction="#onThemeToggleClick" alignment="CENTER" maxWidth="Infinity" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text-dim; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 12px; -fx-padding: 10; -fx-cursor: hand; -fx-font-family: 'IBM Plex Mono';"/>
+            <Button text="⎋  Sign Out" onAction="#onLogoutClick" alignment="CENTER" maxWidth="Infinity" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text-dim; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 12px; -fx-padding: 10; -fx-cursor: hand; -fx-font-family: 'IBM Plex Mono';"/>
+        </VBox>
+    </VBox>
+
+    <VBox HBox.hgrow="ALWAYS">
+
+        <HBox alignment="CENTER_LEFT" style="-fx-background-color: -kmtm-surface; -fx-padding: 20 30; -fx-border-color: transparent transparent -kmtm-border transparent; -fx-border-width: 0 0 1 0;">
+            <Label fx:id="screenTitle" text="DASHBOARD" style="-fx-font-family: 'Bebas Neue', sans-serif; -fx-font-size: 26px; -fx-text-fill: -kmtm-text; -fx-letter-spacing: 1px;"/>
+            <Region HBox.hgrow="ALWAYS" />
+            <Label fx:id="clockLabel" text="Loading time..." style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px; -fx-letter-spacing: 1px;"/>
+        </HBox>
+
+        <StackPane fx:id="contentArea" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent; -fx-padding: 25 30 30 30;"/>
+
+    </VBox>
+</HBox>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<StackPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.kamotomo.pos.HelloController" styleClass="root">
+
+  <VBox alignment="CENTER" spacing="25" maxWidth="400" maxHeight="500" styleClass="login-card">
+
+    <VBox alignment="CENTER" spacing="5">
+      <Label text="KAMOTOMO" styleClass="login-title"/>
+      <Label text="MOTORPARTS MANAGEMENT" styleClass="login-subtitle"/>
+    </VBox>
+
+    <Separator style="-fx-opacity: 0.15; -fx-padding: 5 0;"/>
+
+    <VBox spacing="15" prefWidth="300">
+      <VBox spacing="5">
+        <Label text="USERNAME" styleClass="login-label"/>
+        <TextField fx:id="usernameField" promptText="Enter system username" styleClass="login-input"/>
+      </VBox>
+
+      <VBox spacing="5">
+        <Label text="PASSWORD" styleClass="login-label"/>
+        <PasswordField fx:id="passwordField" promptText="Enter secure password" styleClass="login-input"/>
+      </VBox>
+    </VBox>
+
+    <Label fx:id="errorMessage" text="" alignment="CENTER" style="-fx-text-fill: #f03d3d; -fx-font-size: 12px; -fx-font-weight: bold; -fx-min-height: 18;"/>
+
+    <Button text="SECURE LOGIN" onAction="#onLoginButtonClick" maxWidth="Infinity" styleClass="login-btn"/>
+
+  </VBox>
+</StackPane>
