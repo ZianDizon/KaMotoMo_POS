@@ -359,3 +359,17 @@
     -fx-border-radius: 4;
     -fx-background-radius: 4;
 }
+
+/* =========================================
+   STANDARD JAVAFX ALERT HEADER FIX
+   ========================================= */
+.custom-dialog .header-panel {
+    -fx-background-color: -kmtm-surface;
+}
+
+.custom-dialog .header-panel .label {
+    -fx-text-fill: -kmtm-text;
+    -fx-font-family: 'IBM Plex Sans', sans-serif;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}

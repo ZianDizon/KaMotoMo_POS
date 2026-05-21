@@ -127,7 +127,7 @@ public class LogsController {
         Dialog<Void> dialog = new Dialog<>();
         dialog.setTitle("Transaction Archive — Receipt Reprint");
         DialogPane dialogPane = dialog.getDialogPane();
-        DashboardController.applyThemeToDialog(dialogPane);
+        applyThemeToDialog(dialogPane);
         dialogPane.getStyleClass().add("custom-dialog");
 
         // --- FETCH TRANSACTION METADATA ---
@@ -290,8 +290,13 @@ public class LogsController {
     protected void onClearLogs() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Warning: Clear All Logs");
-        alert.setHeaderText("Are you sure you want to permanently delete all logs?");
-        DashboardController.applyThemeToDialog(alert.getDialogPane());
+
+        // CLEAN HEADER FIX: Delete the white box and move text to the body
+        alert.setHeaderText(null);
+        alert.setContentText("Are you sure you want to permanently delete all logs?");
+
+        // USE LOCAL THEME INJECTOR
+        applyThemeToDialog(alert.getDialogPane());
 
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
@@ -312,5 +317,42 @@ public class LogsController {
         public String getUsername() { return username; }
         public String getAction() { return action; }
         public String getDetails() { return details; }
+    }
+
+    // --- THE TARGETED THEME HUNTER ---
+    private void applyThemeToDialog(DialogPane dialogPane) {
+        if (logsTable == null || logsTable.getScene() == null) return;
+
+        String activeThemeUrl = "";
+        javafx.scene.Parent current = logsTable;
+
+        while (current != null) {
+            for (String stylesheet : current.getStylesheets()) {
+                if (stylesheet.contains("dark-theme.css") || stylesheet.contains("light-theme.css")) {
+                    activeThemeUrl = stylesheet;
+                    break;
+                }
+            }
+            if (!activeThemeUrl.isEmpty()) break;
+            current = current.getParent();
+        }
+
+        if (activeThemeUrl.isEmpty()) {
+            for (String stylesheet : logsTable.getScene().getStylesheets()) {
+                if (stylesheet.contains("dark-theme.css") || stylesheet.contains("light-theme.css")) {
+                    activeThemeUrl = stylesheet;
+                    break;
+                }
+            }
+        }
+
+        dialogPane.getStylesheets().clear();
+        if (!activeThemeUrl.isEmpty()) {
+            dialogPane.getStylesheets().add(activeThemeUrl);
+        }
+
+        if (!dialogPane.getStyleClass().contains("custom-dialog")) {
+            dialogPane.getStyleClass().addAll("custom-dialog", "root");
+        }
     }
 }

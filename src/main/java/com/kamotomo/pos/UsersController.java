@@ -63,7 +63,6 @@ public class UsersController {
 
         DialogPane dialogPane = alert.getDialogPane();
         applyThemeToDialog(dialogPane);
-        dialogPane.getStyleClass().add("custom-dialog");
 
         alert.showAndWait();
     }
@@ -263,7 +262,6 @@ public class UsersController {
 
         DialogPane dialogPane = dialog.getDialogPane();
         applyThemeToDialog(dialogPane);
-        dialogPane.getStyleClass().add("custom-dialog");
 
         // --- UPGRADED INPUT STYLING ---
         String inputStyle = "-fx-padding: 10; -fx-background-color: -kmtm-surface2; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: -kmtm-text; -fx-font-family: 'IBM Plex Sans';";
@@ -382,7 +380,6 @@ public class UsersController {
 
         DialogPane dialogPane = confirm.getDialogPane();
         applyThemeToDialog(dialogPane);
-        dialogPane.getStyleClass().add("custom-dialog");
 
         Optional<ButtonType> result = confirm.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
@@ -438,22 +435,44 @@ public class UsersController {
         public String getStatus() { return status; }
     }
 
-    // --- BULLETPROOF DIALOG THEME INJECTION ---
+    // --- THE TARGETED THEME HUNTER ---
     private void applyThemeToDialog(DialogPane dialogPane) {
-        // FIXED: Swapped 'usersTable' to 'searchField' to guarantee instant anchor hook
-        if (searchField != null && searchField.getScene() != null) {
-            javafx.collections.ObservableList<String> activeStyles = searchField.getScene().getStylesheets();
+        if (usersTable == null || usersTable.getScene() == null) return;
 
-            dialogPane.getStylesheets().setAll(activeStyles);
-            dialogPane.getStyleClass().setAll("custom-dialog", "root");
+        // 1. Hunt down the exact active theme URL by walking up the application tree
+        String activeThemeUrl = "";
+        javafx.scene.Parent current = usersTable;
 
-            dialogPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
-                if (newScene != null) {
-                    newScene.getStylesheets().setAll(activeStyles);
+        while (current != null) {
+            for (String stylesheet : current.getStylesheets()) {
+                if (stylesheet.contains("dark-theme.css") || stylesheet.contains("light-theme.css")) {
+                    activeThemeUrl = stylesheet;
+                    break;
                 }
-            });
-        } else {
-            System.out.println("Warning: Could not find active scene to copy theme.");
+            }
+            if (!activeThemeUrl.isEmpty()) break;
+            current = current.getParent(); // Move up to the next wrapper
+        }
+
+        // 2. If it wasn't on the nodes, check the Scene itself
+        if (activeThemeUrl.isEmpty()) {
+            for (String stylesheet : usersTable.getScene().getStylesheets()) {
+                if (stylesheet.contains("dark-theme.css") || stylesheet.contains("light-theme.css")) {
+                    activeThemeUrl = stylesheet;
+                    break;
+                }
+            }
+        }
+
+        // 3. Clear any old/default styles and apply ONLY the correct theme file
+        dialogPane.getStylesheets().clear();
+        if (!activeThemeUrl.isEmpty()) {
+            dialogPane.getStylesheets().add(activeThemeUrl);
+        }
+
+        // 4. Ensure the CSS custom variables (-kmtm) are activated via the root class
+        if (!dialogPane.getStyleClass().contains("custom-dialog")) {
+            dialogPane.getStyleClass().addAll("custom-dialog", "root");
         }
     }
 }

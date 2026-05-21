@@ -4,7 +4,10 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.DialogPane;
 import javafx.scene.image.Image;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
@@ -15,6 +18,7 @@ import javafx.util.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.io.IOException;
+import java.util.Optional;
 
 public class DashboardController {
 
@@ -170,35 +174,49 @@ public class DashboardController {
         }
     }
 
+    // --- UPDATED LOGOUT METHOD WITH CONFIRMATION ---
     @FXML
     protected void onLogoutClick() {
-        try {
-            // 1. Grab the theme BEFORE we wipe the session memory!
-            String theme = com.kamotomo.pos.utils.UserSession.getInstance().getThemePreference();
-            String cssPath = (theme != null && theme.equals("dark")) ? "/dark-theme.css" : "/light-theme.css";
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Confirm Logout");
+        confirm.setHeaderText(null); // Clean Header Fix
+        confirm.setContentText("Are you sure you want to log out of the system?");
 
-            // 2. Clear the session
-            com.kamotomo.pos.utils.UserSession.getInstance().clearSession();
+        applyThemeToDialog(confirm.getDialogPane());
 
-            // 3. Load the Login Screen
-            FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource("hello-view.fxml"));
-            Scene scene = new Scene(fxmlLoader.load(), 400, 500);
+        Optional<ButtonType> result = confirm.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                // Log the action
+                com.kamotomo.pos.utils.SystemLogger.logAction("System", "User logged out.");
 
-            // 4. INJECT THE CSS
-            scene.getStylesheets().add(getClass().getResource(cssPath).toExternalForm());
+                // 1. Grab the theme BEFORE we wipe the session memory!
+                String theme = com.kamotomo.pos.utils.UserSession.getInstance().getThemePreference();
+                String cssPath = (theme != null && theme.equals("dark")) ? "/dark-theme.css" : "/light-theme.css";
 
-            // 5. Setup the stage
-            Stage stage = (Stage) contentArea.getScene().getWindow();
-            stage.setMaximized(false);
-            stage.setWidth(400);
-            stage.setHeight(500);
+                // 2. Clear the session
+                com.kamotomo.pos.utils.UserSession.getInstance().clearSession();
 
-            stage.setScene(scene);
-            stage.centerOnScreen();
-            stage.getIcons().add(new Image(getClass().getResourceAsStream("/motorcycle.png")));
-            stage.setTitle("KaMotoMo - Login");
-        } catch (Exception e) {
-            e.printStackTrace();
+                // 3. Load the Login Screen
+                FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource("hello-view.fxml"));
+                Scene scene = new Scene(fxmlLoader.load(), 400, 500);
+
+                // 4. INJECT THE CSS
+                scene.getStylesheets().add(getClass().getResource(cssPath).toExternalForm());
+
+                // 5. Setup the stage
+                Stage stage = (Stage) contentArea.getScene().getWindow();
+                stage.setMaximized(false);
+                stage.setWidth(400);
+                stage.setHeight(500);
+
+                stage.setScene(scene);
+                stage.centerOnScreen();
+                stage.getIcons().add(new Image(getClass().getResourceAsStream("/motorcycle.png")));
+                stage.setTitle("KaMotoMo - Login");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -231,14 +249,40 @@ public class DashboardController {
         }
     }
 
-    public static void applyThemeToDialog(javafx.scene.control.DialogPane dialogPane) {
-        String theme = com.kamotomo.pos.utils.UserSession.getInstance().getThemePreference();
-        String stylesheet = (theme != null && theme.equals("dark")) ? "/light-theme.css" : "/dark-theme.css";
-        try {
-            dialogPane.getStylesheets().add(HelloApplication.class.getResource(stylesheet).toExternalForm());
-            dialogPane.getStyleClass().add("root");
-        } catch (Exception e) {
-            System.out.println("Could not apply theme to dialog.");
+    // --- THE TARGETED THEME HUNTER (Replaced old static method) ---
+    private void applyThemeToDialog(DialogPane dialogPane) {
+        if (contentArea == null || contentArea.getScene() == null) return;
+
+        String activeThemeUrl = "";
+        javafx.scene.Parent current = contentArea;
+
+        while (current != null) {
+            for (String stylesheet : current.getStylesheets()) {
+                if (stylesheet.contains("dark-theme.css") || stylesheet.contains("light-theme.css")) {
+                    activeThemeUrl = stylesheet;
+                    break;
+                }
+            }
+            if (!activeThemeUrl.isEmpty()) break;
+            current = current.getParent();
+        }
+
+        if (activeThemeUrl.isEmpty()) {
+            for (String stylesheet : contentArea.getScene().getStylesheets()) {
+                if (stylesheet.contains("dark-theme.css") || stylesheet.contains("light-theme.css")) {
+                    activeThemeUrl = stylesheet;
+                    break;
+                }
+            }
+        }
+
+        dialogPane.getStylesheets().clear();
+        if (!activeThemeUrl.isEmpty()) {
+            dialogPane.getStylesheets().add(activeThemeUrl);
+        }
+
+        if (!dialogPane.getStyleClass().contains("custom-dialog")) {
+            dialogPane.getStyleClass().addAll("custom-dialog", "root");
         }
     }
 }

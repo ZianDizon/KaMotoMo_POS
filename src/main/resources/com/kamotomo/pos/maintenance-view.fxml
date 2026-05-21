@@ -3,7 +3,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.geometry.Insets?>
 
-<VBox spacing="20.0" prefWidth="1000.0" prefHeight="700.0" xmlns:fx="http://javafx.com/fxml" fx:controller="com.kamotomo.pos.MaintenanceController" style="-fx-background-color: transparent;">
+<VBox fx:id="maintenanceRoot" spacing="20.0" prefWidth="1000.0" prefHeight="700.0" xmlns:fx="http://javafx.com/fxml" fx:controller="com.kamotomo.pos.MaintenanceController" style="-fx-background-color: transparent;">
 
     <VBox spacing="5">
         <Label text="SYSTEM MAINTENANCE" style="-fx-text-fill: -kmtm-text; -fx-font-family: 'Bebas Neue', sans-serif; -fx-font-size: 28px; -fx-letter-spacing: 1px;"/>

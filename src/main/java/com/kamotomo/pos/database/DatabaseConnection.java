@@ -6,11 +6,11 @@ import java.sql.SQLException;
 
 public class DatabaseConnection {
     // 1. UPDATED: Added security bypass flags for the portable server
-    private static final String URL = "jdbc:mysql://localhost:3307/kamotomo_db?useSSL=false&allowPublicKeyRetrieval=true";
+    private static final String URL = "jdbc:mysql://localhost:3306/kamotomo_db?useSSL=false&allowPublicKeyRetrieval=true";
     private static final String USER = "root";
 
     // 2. UPDATED: Password is now empty because of the '--initialize-insecure' setup
-    private static final String PASSWORD = "";
+    private static final String PASSWORD = "admin";
 
     public static Connection getConnection() {
         Connection connection = null;
