@@ -80,12 +80,14 @@ public class ReportsController {
 
     private void loadReportData() {
         String timeFilter = timeframeBox.getValue();
-        String dateCondition = "";
+        // FIX: Strictly enforce that we only analyze Completed sales, ignoring Voids.
+        // We use t.status so it correctly aliases when joined with TRANSACTION_DETAILS
+        String dateCondition = " WHERE (t.status = 'Completed' OR t.status IS NULL) ";
 
         if (timeFilter.equals("Today")) {
-            dateCondition = " WHERE DATE(transactionDate) = CURDATE() ";
+            dateCondition += " AND DATE(t.transactionDate) = CURDATE() ";
         } else if (timeFilter.equals("This Month")) {
-            dateCondition = " WHERE MONTH(transactionDate) = MONTH(CURDATE()) AND YEAR(transactionDate) = YEAR(CURDATE()) ";
+            dateCondition += " AND MONTH(t.transactionDate) = MONTH(CURDATE()) AND YEAR(t.transactionDate) = YEAR(CURDATE()) ";
         }
 
         loadKpis(dateCondition);
@@ -95,8 +97,7 @@ public class ReportsController {
 
     private void loadKpis(String dateCondition) {
         try (Connection conn = DatabaseConnection.getConnection()) {
-            String sql = "SELECT COUNT(transactionID) as txCount, SUM(totalAmount) as revenue, SUM(discountAmount) as discounts FROM TRANSACTION" + dateCondition;
-            PreparedStatement stmt = conn.prepareStatement(sql);
+            String sql = "SELECT COUNT(t.transactionID) as txCount, SUM(t.totalAmount) as revenue, SUM(t.discountAmount) as discounts FROM TRANSACTION t" + dateCondition;            PreparedStatement stmt = conn.prepareStatement(sql);
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {

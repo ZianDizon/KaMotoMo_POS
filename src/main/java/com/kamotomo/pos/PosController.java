@@ -3,16 +3,20 @@ package com.kamotomo.pos;
 import com.kamotomo.pos.database.DatabaseConnection;
 import com.kamotomo.pos.models.CartItem;
 import com.kamotomo.pos.models.Product;
+import com.kamotomo.pos.utils.CartSession;
 import com.kamotomo.pos.utils.UserSession;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.print.PrinterJob;
+import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.TextAlignment;
+import javafx.stage.Stage;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -28,13 +32,12 @@ public class PosController {
     @FXML private VBox cartContainer;
     @FXML private TextField searchField;
 
-    // UI Elements for Totals & Checkout
     @FXML private Label originalTotalLabel;
     @FXML private Label totalLabel;
     @FXML private TextField discountField;
     @FXML private ComboBox<String> discountTypeBox;
-    @FXML private ComboBox<String> discountReasonBox; // Changed back from TextField
-    // Payment Method UI
+    @FXML private ComboBox<String> discountReasonBox;
+
     @FXML private Button btnCash;
     @FXML private Button btnGCash;
     @FXML private VBox cashInputContainer;
@@ -42,23 +45,37 @@ public class PosController {
     @FXML private TextField cashTenderedField;
     @FXML private TextField gcashRefField;
     @FXML private Label changeLabel;
+    @FXML private Button btnTransactionHistory;
 
-    private List<CartItem> cart = new ArrayList<>();
+    // The cart is no longer initialized here; it is fetched from the background session
+    private List<CartItem> cart;
     private List<Product> allProducts = new ArrayList<>();
     private String currentCategory = "All";
-    private String selectedPaymentMethod = "Cash"; // Tracks button toggle
+    private String selectedPaymentMethod = "Cash";
 
     private double currentRawTotal = 0.0;
     private double currentDiscountAmount = 0.0;
     private double currentFinalTotal = 0.0;
+    private boolean isAlertShowing = false;
 
     @FXML
     public void initialize() {
-        // Setup Discount Type
+        if ("Employee".equalsIgnoreCase(UserSession.getInstance().getRole())) {
+            btnTransactionHistory.setVisible(false);
+            btnTransactionHistory.setManaged(false);
+        }
+
+        cart = CartSession.getInstance().getCart();
+
+        // --- NEW: UI CONSTRAINT FIX FOR DISCOUNT BOXES ---
+        // This locks the combobox width so selecting "Employee Discount" doesn't stretch the screen
+        discountReasonBox.setMinWidth(130);
+        discountReasonBox.setPrefWidth(130);
+        discountReasonBox.setMaxWidth(130);
+
         discountTypeBox.getItems().clear();
         discountTypeBox.getItems().addAll("%", "₱");
 
-        // Custom Cell to completely override JavaFX's default hidden text behaviors
         discountTypeBox.setButtonCell(new ListCell<String>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -67,21 +84,18 @@ public class PosController {
                     setText(null);
                 } else {
                     setText(item);
-                    // Forces the text to render visibly, ignoring conflicting CSS rules
                     setStyle("-fx-text-fill: -kmtm-text; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 13px;");
                 }
             }
         });
         discountTypeBox.getSelectionModel().selectFirst();
 
-        // Setup Discount Reason
         discountReasonBox.getItems().setAll("Promo Code", "Senior Citizen", "Employee Discount", "Damaged Box", "Wholesale");
 
         loadProductsFromDatabase();
         refreshCartUI();
-        updatePaymentUI(); // Sets initial toggle state to Cash
+        updatePaymentUI();
 
-        // --- LISTENERS ---
         discountField.textProperty().addListener((obs, oldVal, newVal) -> {
             if (!newVal.matches("\\d*(\\.\\d*)?")) { discountField.setText(oldVal); }
             refreshCartUI();
@@ -98,7 +112,6 @@ public class PosController {
             searchField.textProperty().addListener((obs, oldVal, newVal) -> applyFilters());
         }
 
-        // --- GCash Strict 13-Digit Mask ---
         gcashRefField.setTextFormatter(new TextFormatter<>(change -> {
             String newText = change.getControlNewText();
             if (newText.matches("\\d{0,13}")) { return change; }
@@ -106,7 +119,6 @@ public class PosController {
         }));
     }
 
-    // --- PAYMENT TOGGLE LOGIC ---
     @FXML
     protected void onCashToggleClick() {
         selectedPaymentMethod = "Cash";
@@ -122,21 +134,18 @@ public class PosController {
     private void updatePaymentUI() {
         boolean isGCash = selectedPaymentMethod.equals("GCash");
 
-        // Styling for active vs inactive buttons
         String activeStyle = "-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-primary; -fx-border-color: -kmtm-primary; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: hand; -fx-padding: 10; -fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold;";
         String inactiveStyle = "-fx-background-color: -kmtm-surface; -fx-text-fill: -kmtm-text-dim; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: hand; -fx-padding: 10; -fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold;";
 
         btnCash.setStyle(isGCash ? inactiveStyle : activeStyle);
         btnGCash.setStyle(isGCash ? activeStyle : inactiveStyle);
 
-        // Swap Input Containers
         cashInputContainer.setVisible(!isGCash);
         cashInputContainer.setManaged(!isGCash);
 
         gcashInputContainer.setVisible(isGCash);
         gcashInputContainer.setManaged(isGCash);
 
-        // Handle Math
         if (isGCash) {
             cashTenderedField.setText(String.valueOf(currentFinalTotal));
             changeLabel.setText("");
@@ -191,6 +200,19 @@ public class PosController {
         if (currentCategory.isEmpty() || currentCategory.equalsIgnoreCase("All")) {
             currentCategory = "All";
         }
+
+        if (clickedBtn.getParent() instanceof Pane) {
+            Pane parent = (Pane) clickedBtn.getParent();
+            for (javafx.scene.Node node : parent.getChildren()) {
+                if (node instanceof Button) {
+                    // NEW: Clearing the inline style gives control back to your CSS file, restoring hover effects!
+                    node.setStyle("");
+                }
+            }
+            // Apply the permanent highlight ONLY to the clicked button
+            clickedBtn.setStyle("-fx-background-color: -kmtm-primary-glow; -fx-text-fill: -kmtm-primary; -fx-border-color: -kmtm-primary; -fx-border-radius: 4; -fx-background-radius: 4;");
+        }
+
         applyFilters();
     }
 
@@ -202,8 +224,8 @@ public class PosController {
         }
         cart.clear();
         discountField.clear();
-        discountReasonBox.getEditor().clear(); // Clears the typed text in an editable ComboBox
-        discountReasonBox.setValue(null);      // Clears the selection
+        discountReasonBox.getEditor().clear();
+        discountReasonBox.setValue(null);
         cashTenderedField.clear();
         gcashRefField.clear();
         selectedPaymentMethod = "Cash";
@@ -212,17 +234,59 @@ public class PosController {
     }
 
     private void showThemedAlert(Alert.AlertType type, String title, String message) {
+        if (isAlertShowing) return;
+        isAlertShowing = true;
+
         Alert alert = new Alert(type);
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
 
-        DialogPane dialogPane = alert.getDialogPane();
-        if (productGrid.getScene() != null && productGrid.getScene().getRoot() != null) {
-            dialogPane.getStylesheets().addAll(productGrid.getScene().getRoot().getStylesheets());
+        // Inherit window focus natively
+        if (productGrid.getScene() != null && productGrid.getScene().getWindow() != null) {
+            alert.initOwner(productGrid.getScene().getWindow());
         }
+
+        DialogPane dialogPane = alert.getDialogPane();
+
+        // Bulletproof Theme Hunter
+        String activeThemeUrl = "";
+        javafx.scene.Parent current = productGrid;
+
+        while (current != null) {
+            for (String stylesheet : current.getStylesheets()) {
+                if (stylesheet.contains("dark-theme.css") || stylesheet.contains("light-theme.css")) {
+                    activeThemeUrl = stylesheet;
+                    break;
+                }
+            }
+            if (!activeThemeUrl.isEmpty()) break;
+            current = current.getParent();
+        }
+
+        if (activeThemeUrl.isEmpty() && productGrid.getScene() != null) {
+            for (String stylesheet : productGrid.getScene().getStylesheets()) {
+                if (stylesheet.contains("dark-theme.css") || stylesheet.contains("light-theme.css")) {
+                    activeThemeUrl = stylesheet;
+                    break;
+                }
+            }
+        }
+
+        dialogPane.getStylesheets().clear();
+        if (!activeThemeUrl.isEmpty()) {
+            dialogPane.getStylesheets().add(activeThemeUrl);
+        } else if (productGrid.getScene() != null) {
+            dialogPane.getStylesheets().setAll(productGrid.getScene().getStylesheets());
+            if (productGrid.getScene().getRoot() != null) {
+                dialogPane.getStylesheets().addAll(productGrid.getScene().getRoot().getStylesheets());
+            }
+        }
+
         dialogPane.getStyleClass().addAll("custom-dialog", "root");
+
         alert.showAndWait();
+        isAlertShowing = false;
     }
 
     private String getCategoryIcon(String category) {
@@ -262,12 +326,12 @@ public class PosController {
         priceLabel.setStyle("-fx-text-fill: -kmtm-primary; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 14px; -fx-font-weight: bold;");
 
         Label stockLabel = new Label(product.getStock() + " in stock");
-        stockLabel.setStyle("-fx-text-fill: -kmtm-text-muted; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 10px;");
+        stockLabel.setStyle("-fx-text-fill: -kmtm-text; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px; -fx-font-weight: bold;");
 
         if (product.getStock() <= 0) {
             card.setOpacity(0.4);
             stockLabel.setText("OUT OF STOCK");
-            stockLabel.setStyle("-fx-text-fill: #f03d3d; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 10px;");
+            stockLabel.setStyle("-fx-text-fill: #f03d3d; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px; -fx-font-weight: bold;");
         }
 
         card.getChildren().addAll(iconLabel, idLabel, nameLabel, priceLabel, stockLabel);
@@ -326,6 +390,26 @@ public class PosController {
         refreshCartUI();
     }
 
+    private void applyManualQuantity(CartItem item, String newQtyStr) {
+        try {
+            int newQty = Integer.parseInt(newQtyStr.trim());
+            if (newQty == item.getQuantity()) return;
+
+            if (newQty <= 0) {
+                updateCartQuantity(item.getProduct(), -item.getQuantity());
+            } else if (newQty > item.getProduct().getStock()) {
+                showThemedAlert(Alert.AlertType.WARNING, "Stock Limit Reached", "Only " + item.getProduct().getStock() + " units available. Quantity adjusted to maximum.");
+                int delta = item.getProduct().getStock() - item.getQuantity();
+                updateCartQuantity(item.getProduct(), delta);
+            } else {
+                int delta = newQty - item.getQuantity();
+                updateCartQuantity(item.getProduct(), delta);
+            }
+        } catch (NumberFormatException e) {
+            refreshCartUI();
+        }
+    }
+
     private void refreshCartUI() {
         cartContainer.getChildren().clear();
         cartContainer.setSpacing(8);
@@ -355,9 +439,16 @@ public class PosController {
             cartRow.setAlignment(Pos.CENTER_LEFT);
             cartRow.setStyle("-fx-background-color: -kmtm-surface2; -fx-background-radius: 4; -fx-padding: 10;");
 
+            // NEW: Ensure the row itself can expand vertically if the text wraps
+            cartRow.setMinHeight(Region.USE_PREF_SIZE);
+
             VBox nameBox = new VBox();
             Label nameLbl = new Label(item.getProduct().getName());
             nameLbl.setStyle("-fx-text-fill: -kmtm-text; -fx-font-size: 13px; -fx-font-weight: bold;");
+            // NEW: Allow the product name to wrap to a second line instead of pushing UI elements
+            nameLbl.setWrapText(true);
+            nameLbl.setMinHeight(Region.USE_PREF_SIZE);
+
             Label unitPriceLbl = new Label(String.format("₱%.2f each", item.getProduct().getPrice()));
             unitPriceLbl.setStyle("-fx-text-fill: -kmtm-text-muted; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 10px;");
             nameBox.getChildren().addAll(nameLbl, unitPriceLbl);
@@ -365,22 +456,38 @@ public class PosController {
 
             HBox qtyBox = new HBox(5);
             qtyBox.setAlignment(Pos.CENTER);
+
             Button minusBtn = new Button("−");
-            minusBtn.setStyle("-fx-background-color: -kmtm-surface; -fx-text-fill: -kmtm-text; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-cursor: hand; -fx-min-width: 26;");
+            // NEW: Strictly lock the button dimensions so they NEVER turn into dots
+            minusBtn.setMinWidth(28);
+            minusBtn.setMinHeight(28);
+            minusBtn.setStyle("-fx-background-color: -kmtm-surface; -fx-text-fill: -kmtm-text; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-cursor: hand;");
             minusBtn.setOnAction(e -> updateCartQuantity(item.getProduct(), -1));
 
-            Label qtyLbl = new Label(String.valueOf(item.getQuantity()));
-            qtyLbl.setStyle("-fx-text-fill: -kmtm-text; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 14px; -fx-min-width: 24; -fx-alignment: center;");
+            TextField qtyField = new TextField(String.valueOf(item.getQuantity()));
+            qtyField.setStyle("-fx-background-color: -kmtm-surface; -fx-text-fill: -kmtm-text; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 14px; -fx-alignment: center; -fx-border-color: -kmtm-border; -fx-border-radius: 4;");
+            qtyField.setPrefWidth(45);
+            qtyField.setMinWidth(45); // Lock the text field width
+            qtyField.setOnAction(e -> cartContainer.requestFocus());
+            qtyField.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+                if (!isNowFocused) applyManualQuantity(item, qtyField.getText());
+            });
 
             Button plusBtn = new Button("+");
-            plusBtn.setStyle("-fx-background-color: -kmtm-surface; -fx-text-fill: -kmtm-text; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-cursor: hand; -fx-min-width: 26;");
+            plusBtn.setMinWidth(28);
+            plusBtn.setMinHeight(28);
+            plusBtn.setStyle("-fx-background-color: -kmtm-surface; -fx-text-fill: -kmtm-text; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-cursor: hand;");
             plusBtn.setOnAction(e -> updateCartQuantity(item.getProduct(), 1));
-            qtyBox.getChildren().addAll(minusBtn, qtyLbl, plusBtn);
+
+            qtyBox.getChildren().addAll(minusBtn, qtyField, plusBtn);
 
             Label subLbl = new Label(String.format("₱%.2f", item.getSubtotal()));
-            subLbl.setStyle("-fx-text-fill: -kmtm-primary; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 13px; -fx-min-width: 70; -fx-alignment: center-right;");
+            subLbl.setStyle("-fx-text-fill: -kmtm-primary; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 13px; -fx-alignment: center-right;");
+            subLbl.setMinWidth(70); // Lock the price width
 
             Button removeBtn = new Button("✕");
+            removeBtn.setMinWidth(28);
+            removeBtn.setMinHeight(28);
             removeBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: -kmtm-text-muted; -fx-cursor: hand;");
             removeBtn.setOnAction(e -> updateCartQuantity(item.getProduct(), -item.getQuantity()));
 
@@ -448,7 +555,6 @@ public class PosController {
         String query = searchField.getText().trim().toLowerCase();
         if (query.isEmpty()) return;
 
-        // Look for an exact match in SKU or Name
         for (Product product : allProducts) {
             String prefix = product.getCategory().length() >= 3 ? product.getCategory().substring(0, 3).toUpperCase() : "ITM";
             String sku = String.format("%s-%04d", prefix, product.getId()).toLowerCase();
@@ -456,19 +562,17 @@ public class PosController {
             if (sku.equals(query) || product.getName().toLowerCase().equals(query)) {
                 if (product.getStock() > 0) {
                     addToCart(product);
-                    searchField.clear(); // Clear the box for the next scan
-                    searchField.requestFocus(); // Keep the cursor in the box so they can rapid-fire scan
+                    searchField.clear();
+                    searchField.requestFocus();
                 } else {
                     showThemedAlert(Alert.AlertType.WARNING, "Out of Stock", product.getName() + " is currently out of stock.");
                 }
-                return; // Stop searching once we find it
+                return;
             }
         }
-        // If we get here, the barcode wasn't found in the database
         showThemedAlert(Alert.AlertType.ERROR, "Not Found", "No product matches the scanned code: " + query);
         searchField.clear();
     }
-
 
     @FXML
     protected void onCompleteSaleClick() {
@@ -506,13 +610,14 @@ public class PosController {
         try (Connection conn = DatabaseConnection.getConnection()) {
             conn.setAutoCommit(false);
             try {
-                String txSql = "INSERT INTO TRANSACTION (userID, totalAmount, paymentMethod, discountAmount, discountReason, amountTendered) VALUES (?, ?, ?, ?, ?, ?)";                PreparedStatement txStmt = conn.prepareStatement(txSql, java.sql.Statement.RETURN_GENERATED_KEYS);
+                String txSql = "INSERT INTO TRANSACTION (userID, totalAmount, paymentMethod, discountAmount, discountReason, amountTendered) VALUES (?, ?, ?, ?, ?, ?)";
+                PreparedStatement txStmt = conn.prepareStatement(txSql, java.sql.Statement.RETURN_GENERATED_KEYS);
                 txStmt.setInt(1, userId);
                 txStmt.setDouble(2, currentFinalTotal);
                 txStmt.setString(3, selectedPaymentMethod);
                 txStmt.setDouble(4, currentDiscountAmount);
                 txStmt.setString(5, discountReason);
-                txStmt.setDouble(6, tendered); // <--- Saves the cash amount here!
+                txStmt.setDouble(6, tendered);
                 txStmt.executeUpdate();
 
                 ResultSet rs = txStmt.getGeneratedKeys();
@@ -558,7 +663,6 @@ public class PosController {
         VBox receiptBox = new VBox(8);
         receiptBox.setAlignment(Pos.TOP_CENTER);
 
-        // THERMAL PRINTER FIX: Lock the width to ~250px (roughly 58mm to 80mm paper)
         receiptBox.setPrefWidth(250);
         receiptBox.setMaxWidth(250);
         receiptBox.setPadding(new Insets(10));
@@ -573,15 +677,13 @@ public class PosController {
             details.setText(details.getText() + "\nRef: " + refNumber);
         }
         details.setAlignment(Pos.CENTER_LEFT);
-        details.setMaxWidth(Double.MAX_VALUE); // Stretch to left align properly
+        details.setMaxWidth(Double.MAX_VALUE);
 
-        // Shorter dividers for the narrow thermal paper
         Label divider1 = new Label("------------------------");
         Label divider2 = new Label("------------------------");
 
         VBox itemsBox = new VBox(2);
         for (CartItem item : cart) {
-            // Thermal layout: Item name on top, qty and price on bottom line
             Label nameRow = new Label(item.getProduct().getName());
             nameRow.setWrapText(true);
             nameRow.setMaxWidth(230);
@@ -607,7 +709,6 @@ public class PosController {
 
         receiptBox.getChildren().addAll(totalLbl, tenderLbl, changeLbl, new Label("\nThank you!\nIngat sa kalsada! 🏍"));
 
-        // Build the Popup Dialog
         Dialog<Void> receiptDialog = new Dialog<>();
         receiptDialog.setTitle("Transaction Complete");
 
@@ -617,7 +718,6 @@ public class PosController {
         }
         dialogPane.getStyleClass().addAll("custom-dialog", "root");
 
-        // Put the narrow receipt inside a slightly wider container just for the screen popup
         HBox dialogContainer = new HBox(receiptBox);
         dialogContainer.setAlignment(Pos.CENTER);
         dialogContainer.setPadding(new Insets(20));
@@ -630,7 +730,6 @@ public class PosController {
         receiptDialog.setResultConverter(dialogButton -> {
             if (dialogButton == printType) {
                 PrinterJob job = PrinterJob.createPrinterJob();
-                // When we send receiptBox to the printer, it takes the 250px constrained layout!
                 if (job != null && job.showPrintDialog(receiptDialog.getOwner())) {
                     boolean success = job.printPage(receiptBox);
                     if (success) job.endJob();
@@ -640,5 +739,40 @@ public class PosController {
         });
 
         receiptDialog.showAndWait();
+    }
+
+    @FXML
+    protected void onTransactionHistoryClick() {
+        try {
+            FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("transaction-ledger-view.fxml"));
+            Parent root = fxmlLoader.load();
+
+            Stage ledgerStage = new Stage();
+            ledgerStage.setTitle("Transaction Ledger & Void Protocol");
+            ledgerStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+
+            // FIX 1: Lock the window dimensions so it cannot be maximized or dragged out of proportion
+            ledgerStage.setResizable(false);
+
+            // Create the Scene
+            javafx.scene.Scene ledgerScene = new javafx.scene.Scene(root, 900, 600);
+
+            // Strictly enforce theme based on UserSession
+            String activeTheme = com.kamotomo.pos.utils.UserSession.getInstance().getThemePreference();
+            if (activeTheme == null || activeTheme.isEmpty()) activeTheme = "light";
+            ledgerScene.getStylesheets().add(getClass().getResource("/" + activeTheme + "-theme.css").toExternalForm());
+
+            // Put the Scene into the Stage and wait for the Admin to finish
+            ledgerStage.setScene(ledgerScene);
+            ledgerStage.showAndWait();
+
+            // FIX 2: The moment the Admin closes the Ledger window, force the POS to fetch
+            // the fresh inventory numbers from the database so returned stock immediately appears!
+            loadProductsFromDatabase();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            showThemedAlert(Alert.AlertType.ERROR, "System Error", "Failed to open the Transaction Ledger.");
+        }
     }
 }

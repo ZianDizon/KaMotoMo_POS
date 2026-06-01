@@ -39,6 +39,7 @@ public class InventoryController {
     private ObservableList<Product> masterData = FXCollections.observableArrayList();
     private FilteredList<Product> filteredData;
     private boolean showingArchived = false;
+    private boolean isAlertShowing = false;
 
     @FXML
     public void initialize() {
@@ -58,7 +59,6 @@ public class InventoryController {
 
         inventoryTable.setItems(filteredData);
 
-        // --- ROLE-BASED INVENTORY LOCKDOWN ---
         if ("Employee".equalsIgnoreCase(UserSession.getInstance().getRole())) {
             if (btnAddProduct != null) {
                 btnAddProduct.setVisible(false);
@@ -97,7 +97,7 @@ public class InventoryController {
 
             if (searchText == null || searchText.isEmpty()) return true;
 
-            String prefix = product.getCategory().length() >= 3 ? product.getCategory().substring(0, 3).toUpperCase() : "ITM";
+            String prefix = product.getCategory() != null && product.getCategory().length() >= 3 ? product.getCategory().substring(0, 3).toUpperCase() : "ITM";
             String displayId = String.format("%s-%04d", prefix, product.getId()).toLowerCase();
 
             return product.getName().toLowerCase().contains(searchText) ||
@@ -132,7 +132,8 @@ public class InventoryController {
                     setText(null);
                 } else {
                     Product p = getTableRow().getItem();
-                    String prefix = p.getCategory().length() >= 3 ? p.getCategory().substring(0, 3).toUpperCase() : "ITM";
+                    String cat = p.getCategory();
+                    String prefix = (cat != null && cat.length() >= 3) ? cat.substring(0, 3).toUpperCase() : "ITM";
                     setText(String.format("%s-%04d", prefix, item));
                     setStyle("-fx-font-family: 'IBM Plex Mono'; -fx-text-fill: -kmtm-text-dim;");
                 }
@@ -182,19 +183,14 @@ public class InventoryController {
                     Label badge = new Label();
                     badge.setStyle("-fx-font-family: 'IBM Plex Mono'; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 4 8; -fx-background-radius: 4;");
 
-                    int rop = (2 * 2) + 5;
-
                     if (p.getStatus().equals("Archived")) {
                         badge.setText("ARCHIVED");
                         badge.setStyle(badge.getStyle() + "-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text-dim;");
-                    } else if (p.getStock() <= (rop / 2)) {
-                        badge.setText("CRITICAL");
+                    } else if (p.getStock() <= 0) {
+                        badge.setText("OUT OF STOCK");
                         badge.setStyle(badge.getStyle() + "-fx-background-color: rgba(240, 61, 61, 0.1); -fx-text-fill: #f03d3d;");
-                    } else if (p.getStock() <= rop) {
-                        badge.setText("LOW");
-                        badge.setStyle(badge.getStyle() + "-fx-background-color: rgba(234, 179, 8, 0.1); -fx-text-fill: #eab308;");
                     } else {
-                        badge.setText("IN STOCK");
+                        badge.setText("ACTIVE");
                         badge.setStyle(badge.getStyle() + "-fx-background-color: rgba(58, 223, 138, 0.1); -fx-text-fill: #3adf8a;");
                     }
                     setGraphic(badge);
@@ -251,11 +247,15 @@ public class InventoryController {
             stmt.setInt(2, p.getId());
             stmt.executeUpdate();
 
-            // --- LOGGING ADDED HERE ---
             com.kamotomo.pos.utils.SystemLogger.logAction("Inventory", "Changed status of product ID " + p.getId() + " to " + newStatus);
 
+            String actionWord = newStatus.equals("Archived") ? "archived." : "restored and made active.";
+            showSuccessPopup("Status Updated", "The product '" + p.getName() + "' has been successfully " + actionWord);
+
             loadDataFromDatabase();
-        } catch (Exception e) { e.printStackTrace(); }
+        } catch (Exception e) {
+            showErrorPopup("Database Error", "We encountered a problem changing the status. Please contact your administrator.");
+        }
     }
 
     private void showProductDialog(Product existingProduct) {
@@ -265,7 +265,6 @@ public class InventoryController {
 
         DialogPane dialogPane = dialog.getDialogPane();
         applyThemeToDialog(dialogPane);
-        dialogPane.getStyleClass().add("custom-dialog");
 
         HBox header = new HBox();
         header.getStyleClass().add("dialog-header");
@@ -316,11 +315,58 @@ public class InventoryController {
         stockField.setPromptText("0");
         stockField.setStyle("-fx-padding: 8;");
 
+        ComboBox<String> supplierBox = new ComboBox<>();
+        supplierBox.setEditable(true);
+        supplierBox.setMaxWidth(Double.MAX_VALUE);
+        supplierBox.setPromptText("Select or type new...");
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement("SELECT DISTINCT supplierName FROM PRODUCT WHERE supplierName IS NOT NULL AND supplierName != ''");
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                supplierBox.getItems().add(rs.getString("supplierName"));
+            }
+        } catch (Exception e) {
+            supplierBox.getItems().add("General Supplier");
+        }
+
+        TextField leadTimeField = new TextField("7");
+        leadTimeField.setPromptText("Days to arrive");
+        leadTimeField.setStyle("-fx-padding: 8;");
+
+        TextField safetyStockField = new TextField("5");
+        safetyStockField.setPromptText("Emergency buffer");
+        safetyStockField.setStyle("-fx-padding: 8;");
+
+        TextField orderCostField = new TextField("150.00");
+        orderCostField.setPromptText("0.00");
+        orderCostField.setStyle("-fx-padding: 8;");
+
+        TextField holdingCostField = new TextField("15.00");
+        holdingCostField.setPromptText("0.00");
+        holdingCostField.setStyle("-fx-padding: 8;");
+
+        TextField editReasonField = new TextField();
+
         if (existingProduct != null) {
             nameField.setText(existingProduct.getName());
             catBox.setValue(existingProduct.getCategory());
             priceField.setText(String.valueOf(existingProduct.getPrice()));
             stockField.setText(String.valueOf(existingProduct.getStock()));
+
+            try (Connection conn = DatabaseConnection.getConnection()) {
+                String extendedSql = "SELECT supplierName, supplierLeadTimeDays, safetyStock, orderCost, holdingCost FROM PRODUCT WHERE productID = ?";
+                PreparedStatement extStmt = conn.prepareStatement(extendedSql);
+                extStmt.setInt(1, existingProduct.getId());
+                ResultSet rs = extStmt.executeQuery();
+                if (rs.next()) {
+                    supplierBox.setValue(rs.getString("supplierName"));
+                    leadTimeField.setText(String.valueOf(rs.getInt("supplierLeadTimeDays")));
+                    safetyStockField.setText(String.valueOf(rs.getInt("safetyStock")));
+                    orderCostField.setText(String.valueOf(rs.getDouble("orderCost")));
+                    holdingCostField.setText(String.valueOf(rs.getDouble("holdingCost")));
+                }
+            } catch (Exception e) { e.printStackTrace(); }
         }
 
         GridPane grid = new GridPane();
@@ -335,52 +381,157 @@ public class InventoryController {
         grid.getColumnConstraints().addAll(col1, col2);
 
         Label catLbl = new Label("CATEGORY");
+        Label suppLbl = new Label("SUPPLIER");
         Label nameLbl = new Label("PRODUCT NAME");
         Label priceLbl = new Label("PRICE (₱)");
         Label stockLbl = new Label("STOCK QUANTITY");
 
-        VBox catBoxContainer = new VBox(5, catLbl, catBox);
-        grid.add(catBoxContainer, 0, 0, 2, 1);
+        Label scHeaderLbl = new Label("SUPPLY CHAIN (EOQ / ROP VARIABLES)");
+        scHeaderLbl.setStyle("-fx-text-fill: -kmtm-primary; -fx-font-weight: bold; -fx-font-size: 11px;");
 
-        VBox nameContainer = new VBox(5, nameLbl, nameField);
-        grid.add(nameContainer, 0, 1, 2, 1);
+        Label leadLbl = new Label("LEAD TIME (DAYS)");
+        Label safetyLbl = new Label("SAFETY STOCK");
+        Label orderCostLbl = new Label("ORDERING COST (₱)");
+        Label holdingCostLbl = new Label("HOLDING COST (₱)");
 
-        VBox priceContainer = new VBox(5, priceLbl, priceField);
-        VBox stockContainer = new VBox(5, stockLbl, stockField);
-        grid.add(priceContainer, 0, 2);
-        grid.add(stockContainer, 1, 2);
+        grid.add(new VBox(5, catLbl, catBox), 0, 0);
+        grid.add(new VBox(5, suppLbl, supplierBox), 1, 0);
+
+        grid.add(new VBox(5, nameLbl, nameField), 0, 1, 2, 1);
+
+        grid.add(new VBox(5, priceLbl, priceField), 0, 2);
+        grid.add(new VBox(5, stockLbl, stockField), 1, 2);
+
+        Separator sep = new Separator();
+        sep.setPadding(new Insets(10, 0, 5, 0));
+        grid.add(sep, 0, 3, 2, 1);
+        grid.add(scHeaderLbl, 0, 4, 2, 1);
+
+        grid.add(new VBox(5, leadLbl, leadTimeField), 0, 5);
+        grid.add(new VBox(5, safetyLbl, safetyStockField), 1, 5);
+        grid.add(new VBox(5, orderCostLbl, orderCostField), 0, 6);
+        grid.add(new VBox(5, holdingCostLbl, holdingCostField), 1, 6);
+
+        if (existingProduct != null) {
+            Separator sep2 = new Separator();
+            sep2.setPadding(new Insets(10, 0, 5, 0));
+            grid.add(sep2, 0, 7, 2, 1);
+
+            Label editReasonLbl = new Label("REASON FOR EDIT (REQUIRED)");
+            editReasonLbl.setStyle("-fx-text-fill: #f03d3d; -fx-font-weight: bold;");
+            editReasonField.setPromptText("e.g. Price update from supplier, correcting typo...");
+            editReasonField.setStyle("-fx-padding: 8;");
+            grid.add(new VBox(5, editReasonLbl, editReasonField), 0, 8, 2, 1);
+        }
 
         dialogPane.setContent(grid);
 
         ButtonType saveButtonType = new ButtonType(existingProduct == null ? "Save Product" : "Update Product", ButtonBar.ButtonData.OK_DONE);
         dialogPane.getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
 
+        final Button saveButton = (Button) dialogPane.lookupButton(saveButtonType);
+        saveButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            String name = nameField.getText().trim();
+            String priceStr = priceField.getText().trim().replace(",", "");
+            String stockStr = stockField.getText().trim();
+            String leadStr = leadTimeField.getText().trim();
+            String safetyStr = safetyStockField.getText().trim();
+            String ordCostStr = orderCostField.getText().trim().replace(",", "");
+            String holdCostStr = holdingCostField.getText().trim().replace(",", "");
+            String reason = editReasonField.getText().trim();
+
+            if (name.isEmpty() || name.length() > 50) {
+                showErrorPopup("Invalid Name", "Please enter a valid product name. It cannot be empty or longer than 50 characters.");
+                event.consume();
+                return;
+            }
+
+            if (catBox.getValue() == null) {
+                showErrorPopup("Missing Category", "Please click the dropdown menu and select a Category for this product.");
+                event.consume();
+                return;
+            }
+
+            if (supplierBox.getValue() == null || supplierBox.getValue().trim().isEmpty()) {
+                showErrorPopup("Missing Supplier", "Please select or type a Supplier for this product.");
+                event.consume();
+                return;
+            }
+
+            try {
+                if (Double.parseDouble(priceStr) < 0) throw new NumberFormatException();
+            } catch (NumberFormatException e) {
+                showErrorPopup("Invalid Price", "The price you entered is not recognized. Please type a valid amount.");
+                event.consume();
+                return;
+            }
+
+            try {
+                if (Integer.parseInt(stockStr) < 0) throw new NumberFormatException();
+            } catch (NumberFormatException e) {
+                showErrorPopup("Invalid Stock", "The stock quantity must be a whole positive number.");
+                event.consume();
+                return;
+            }
+
+            try {
+                if (Integer.parseInt(leadStr) < 0 || Integer.parseInt(safetyStr) < 0) throw new NumberFormatException();
+                if (Double.parseDouble(ordCostStr) < 0 || Double.parseDouble(holdCostStr) < 0) throw new NumberFormatException();
+            } catch (NumberFormatException e) {
+                showErrorPopup("Invalid Supply Chain Data", "All supply chain fields must be valid positive numbers. Remove any letters.");
+                event.consume();
+                return;
+            }
+
+            if (existingProduct != null && reason.isEmpty()) {
+                showErrorPopup("Reason Required", "You must provide a clear reason for modifying this product to maintain the system audit trail.");
+                event.consume();
+                return;
+            }
+        });
+
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == saveButtonType) {
                 try {
-                    String name = nameField.getText();
+                    String name = nameField.getText().trim();
                     String cat = catBox.getValue();
-                    double price = Double.parseDouble(priceField.getText());
-                    int stock = Integer.parseInt(stockField.getText());
+                    String supp = supplierBox.getValue().trim();
+                    double price = Double.parseDouble(priceField.getText().trim().replace(",", ""));
+                    int stock = Integer.parseInt(stockField.getText().trim());
+
+                    int leadTime = Integer.parseInt(leadTimeField.getText().trim());
+                    int safetyStock = Integer.parseInt(safetyStockField.getText().trim());
+                    double orderCost = Double.parseDouble(orderCostField.getText().trim().replace(",", ""));
+                    double holdingCost = Double.parseDouble(holdingCostField.getText().trim().replace(",", ""));
+                    String reason = editReasonField.getText().trim();
 
                     try (Connection conn = DatabaseConnection.getConnection()) {
                         if (existingProduct == null) {
-                            String sql = "INSERT INTO PRODUCT (productName, category, price, stockQuantity, status) VALUES (?, ?, ?, ?, 'Active')";
+                            String sql = "INSERT INTO PRODUCT (productName, category, price, stockQuantity, status, supplierLeadTimeDays, safetyStock, orderCost, holdingCost, supplierName) VALUES (?, ?, ?, ?, 'Active', ?, ?, ?, ?, ?)";
                             com.kamotomo.pos.utils.SystemLogger.logAction("Inventory", "Added new product: " + name);
                             PreparedStatement stmt = conn.prepareStatement(sql);
                             stmt.setString(1, name); stmt.setString(2, cat); stmt.setDouble(3, price); stmt.setInt(4, stock);
+                            stmt.setInt(5, leadTime); stmt.setInt(6, safetyStock); stmt.setDouble(7, orderCost); stmt.setDouble(8, holdingCost);
+                            stmt.setString(9, supp);
                             stmt.executeUpdate();
+
+                            showSuccessPopup("Product Added", "You have successfully added '" + name + "' to the active inventory.");
                         } else {
-                            String sql = "UPDATE PRODUCT SET productName=?, category=?, price=?, stockQuantity=? WHERE productID=?";
-                            com.kamotomo.pos.utils.SystemLogger.logAction("Inventory", "Updated product ID: " + existingProduct.getId());
+                            String sql = "UPDATE PRODUCT SET productName=?, category=?, price=?, stockQuantity=?, supplierLeadTimeDays=?, safetyStock=?, orderCost=?, holdingCost=?, supplierName=? WHERE productID=?";
+                            com.kamotomo.pos.utils.SystemLogger.logAction("Inventory", "Updated product ID " + existingProduct.getId() + " - Reason: " + reason);
                             PreparedStatement stmt = conn.prepareStatement(sql);
-                            stmt.setString(1, name); stmt.setString(2, cat); stmt.setDouble(3, price); stmt.setInt(4, stock); stmt.setInt(5, existingProduct.getId());
+                            stmt.setString(1, name); stmt.setString(2, cat); stmt.setDouble(3, price); stmt.setInt(4, stock);
+                            stmt.setInt(5, leadTime); stmt.setInt(6, safetyStock); stmt.setDouble(7, orderCost); stmt.setDouble(8, holdingCost);
+                            stmt.setString(9, supp);
+                            stmt.setInt(10, existingProduct.getId());
                             stmt.executeUpdate();
+
+                            showSuccessPopup("Product Updated", "You have successfully updated the details for '" + name + "'.");
                         }
                     }
                     loadDataFromDatabase();
                 } catch (Exception e) {
-                    System.out.println("Input Error: " + e.getMessage());
+                    showErrorPopup("Database Error", "We encountered a problem saving this product. Please check if the product name already exists.");
                 }
             }
             return null;
@@ -389,45 +540,50 @@ public class InventoryController {
         dialog.showAndWait();
     }
 
-
-    // --- THE TARGETED THEME HUNTER ---
     private void applyThemeToDialog(DialogPane dialogPane) {
         if (inventoryTable == null || inventoryTable.getScene() == null) return;
 
-        // 1. Hunt down the exact active theme URL by walking up the application tree
-        String activeThemeUrl = "";
-        javafx.scene.Parent current = inventoryTable;
+        Scene mainScene = inventoryTable.getScene();
 
-        while (current != null) {
-            for (String stylesheet : current.getStylesheets()) {
-                if (stylesheet.contains("dark-theme.css") || stylesheet.contains("light-theme.css")) {
-                    activeThemeUrl = stylesheet;
-                    break;
-                }
-            }
-            if (!activeThemeUrl.isEmpty()) break;
-            current = current.getParent(); // Move up to the next wrapper (e.g., VBox -> BorderPane)
+        dialogPane.getStylesheets().setAll(mainScene.getStylesheets());
+        if (mainScene.getRoot() != null) {
+            dialogPane.getStylesheets().addAll(mainScene.getRoot().getStylesheets());
         }
 
-        // 2. If it wasn't on the nodes, check the Scene itself
-        if (activeThemeUrl.isEmpty()) {
-            for (String stylesheet : inventoryTable.getScene().getStylesheets()) {
-                if (stylesheet.contains("dark-theme.css") || stylesheet.contains("light-theme.css")) {
-                    activeThemeUrl = stylesheet;
-                    break;
-                }
-            }
-        }
-
-        // 3. Clear any old/default styles and apply ONLY the correct theme file
-        dialogPane.getStylesheets().clear();
-        if (!activeThemeUrl.isEmpty()) {
-            dialogPane.getStylesheets().add(activeThemeUrl);
-        }
-
-        // 4. Ensure the CSS custom variables (-kmtm) are activated via the root class
         if (!dialogPane.getStyleClass().contains("custom-dialog")) {
             dialogPane.getStyleClass().addAll("custom-dialog", "root");
         }
+    }
+
+    private void showErrorPopup(String title, String message) {
+        if (isAlertShowing) return;
+        isAlertShowing = true;
+
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+
+        DialogPane dialogPane = alert.getDialogPane();
+        applyThemeToDialog(dialogPane);
+
+        alert.showAndWait();
+        isAlertShowing = false;
+    }
+
+    private void showSuccessPopup(String title, String message) {
+        if (isAlertShowing) return;
+        isAlertShowing = true;
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+
+        DialogPane dialogPane = alert.getDialogPane();
+        applyThemeToDialog(dialogPane);
+
+        alert.showAndWait();
+        isAlertShowing = false;
     }
 }

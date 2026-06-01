@@ -51,6 +51,7 @@ public class DashboardController {
     public void initialize() {
         // --- REAL-TIME CLOCK SETUP ---
         if (clockLabel != null) {
+            clockLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: -kmtm-primary; -fx-font-weight: bold;");
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE, MMM dd, yyyy, hh:mm:ss a");
             Timeline clock = new Timeline(new KeyFrame(Duration.ZERO, e -> {
                 clockLabel.setText(LocalDateTime.now().format(formatter));
@@ -179,7 +180,7 @@ public class DashboardController {
     protected void onLogoutClick() {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Confirm Logout");
-        confirm.setHeaderText(null); // Clean Header Fix
+        confirm.setHeaderText(null);
         confirm.setContentText("Are you sure you want to log out of the system?");
 
         applyThemeToDialog(confirm.getDialogPane());
@@ -187,22 +188,20 @@ public class DashboardController {
         Optional<ButtonType> result = confirm.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
-                // Log the action
+                // 1. Log the action
                 com.kamotomo.pos.utils.SystemLogger.logAction("System", "User logged out.");
 
-                // 1. Grab the theme BEFORE we wipe the session memory!
-                String theme = com.kamotomo.pos.utils.UserSession.getInstance().getThemePreference();
-                String cssPath = (theme != null && theme.equals("dark")) ? "/dark-theme.css" : "/light-theme.css";
-
-                // 2. Clear the session
+                // 2. Clear the session entirely
                 com.kamotomo.pos.utils.UserSession.getInstance().clearSession();
 
                 // 3. Load the Login Screen
                 FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource("hello-view.fxml"));
                 Scene scene = new Scene(fxmlLoader.load(), 400, 500);
 
-                // 4. INJECT THE CSS
-                scene.getStylesheets().add(getClass().getResource(cssPath).toExternalForm());
+                // --- FIX: THE STRICT LIGHT MODE ENFORCER ---
+                // Ignore all user preferences, clear inherited styles, and forcefully apply light theme
+                scene.getStylesheets().clear();
+                scene.getStylesheets().add(getClass().getResource("/light-theme.css").toExternalForm());
 
                 // 5. Setup the stage
                 Stage stage = (Stage) contentArea.getScene().getWindow();

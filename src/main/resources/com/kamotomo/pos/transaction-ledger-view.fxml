@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox spacing="15" style="-fx-background-color: -kmtm-surface; -fx-padding: 20;" xmlns:fx="http://javafx.com/fxml" fx:controller="com.kamotomo.pos.TransactionLedgerController">
+
+    <HBox alignment="CENTER_LEFT" spacing="15">
+        <Label text="TRANSACTION LEDGER" style="-fx-text-fill: -kmtm-text; -fx-font-family: 'Bebas Neue', sans-serif; -fx-font-size: 24px; -fx-letter-spacing: 1px;"/>
+        <Region HBox.hgrow="ALWAYS" />
+        <TextField fx:id="searchField" promptText="🔍 Search ID or Date..." prefWidth="250" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-padding: 8 12;"/>
+    </HBox>
+
+    <TableView fx:id="transactionTable" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent; -fx-border-color: -kmtm-border; -fx-border-radius: 4;">
+        <columns>
+            <TableColumn fx:id="colId" text="TXN ID" prefWidth="100"/>
+            <TableColumn fx:id="colDate" text="Date &amp; Time" prefWidth="200"/>
+            <TableColumn fx:id="colTotal" text="Total (₱)" prefWidth="150"/>
+            <TableColumn fx:id="colMethod" text="Payment" prefWidth="150"/>
+            <TableColumn fx:id="colStatus" text="Status" prefWidth="150"/>
+        </columns>
+    </TableView>
+
+    <HBox alignment="CENTER_RIGHT" spacing="10">
+        <Label text="*Voiding will autonomously return stock to inventory and update logs." style="-fx-text-fill: -kmtm-text-dim; -fx-font-size: 11px;"/>
+        <Region HBox.hgrow="ALWAYS" />
+        <Button fx:id="btnVoid" text="⚠️ Void Selected Transaction" onAction="#onVoidTransactionClick" style="-fx-background-color: #f03d3d; -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 10 20; -fx-cursor: hand;"/>
+    </HBox>
+</VBox>

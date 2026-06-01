@@ -43,7 +43,6 @@ public class UsersController {
         roleFilter.getItems().addAll("All Roles", "Admin", "Employee");
         roleFilter.getSelectionModel().selectFirst();
 
-        // --- FORCES THE INITIAL STYLE ---
         if (toggleArchiveBtn != null) {
             toggleArchiveBtn.setStyle("-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold; -fx-font-size: 13px; -fx-padding: 10 20; -fx-cursor: hand;");
         }
@@ -263,7 +262,6 @@ public class UsersController {
         DialogPane dialogPane = dialog.getDialogPane();
         applyThemeToDialog(dialogPane);
 
-        // --- UPGRADED INPUT STYLING ---
         String inputStyle = "-fx-padding: 10; -fx-background-color: -kmtm-surface2; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-text-fill: -kmtm-text; -fx-font-family: 'IBM Plex Sans';";
         String labelStyle = "-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px; -fx-font-weight: bold;";
 
@@ -279,12 +277,19 @@ public class UsersController {
         usernameField.setPromptText("System Username");
         usernameField.setStyle(inputStyle);
 
+        usernameField.setTextFormatter(new TextFormatter<>(change -> {
+            if (change.getControlNewText().matches("^[a-zA-Z0-9]{0,16}$")) {
+                return change;
+            }
+            return null;
+        }));
+
         ComboBox<String> roleBox = new ComboBox<>(FXCollections.observableArrayList("Employee", "Admin"));
         roleBox.setMaxWidth(Double.MAX_VALUE);
         roleBox.setStyle("-fx-font-family: 'IBM Plex Sans'; -fx-background-color: -kmtm-surface2; -fx-border-color: -kmtm-border; -fx-border-radius: 4;");
 
         PasswordField passField = new PasswordField();
-        passField.setPromptText(existingUser == null ? "Initial Password" : "Leave blank to keep current");
+        passField.setPromptText(existingUser == null ? "Strict: Min 8, Upper, Lower, Num, Special" : "Leave blank to keep current");
         passField.setStyle(inputStyle);
 
         if (existingUser != null) {
@@ -296,13 +301,11 @@ public class UsersController {
             roleBox.getSelectionModel().selectFirst();
         }
 
-        // --- UPGRADED GRID LAYOUT ---
         GridPane grid = new GridPane();
         grid.setHgap(20);
         grid.setVgap(20);
         grid.setPadding(new Insets(25, 30, 15, 30));
 
-        // Force a perfect 50/50 split
         ColumnConstraints col1 = new ColumnConstraints();
         col1.setPercentWidth(50);
         ColumnConstraints col2 = new ColumnConstraints();
@@ -313,38 +316,62 @@ public class UsersController {
         Label contactLbl = new Label("CONTACT INFO"); contactLbl.setStyle(labelStyle);
         Label userLbl = new Label("USERNAME"); userLbl.setStyle(labelStyle);
         Label roleLbl = new Label("SYSTEM ROLE"); roleLbl.setStyle(labelStyle);
-        Label passLbl = new Label(existingUser == null ? "PASSWORD" : "NEW PASSWORD (OPTIONAL)"); passLbl.setStyle(labelStyle);
+        Label passLbl = new Label(existingUser == null ? "PASSWORD (Strict Format)" : "NEW PASSWORD (OPTIONAL)"); passLbl.setStyle(labelStyle);
 
-        // Stack labels on top of fields
         grid.add(new VBox(5, nameLbl, nameField), 0, 0, 2, 1);
         grid.add(new VBox(5, userLbl, usernameField), 0, 1);
         grid.add(new VBox(5, roleLbl, roleBox), 1, 1);
         grid.add(new VBox(5, contactLbl, contactField), 0, 2);
-
-        if (existingUser == null) {
-            grid.add(new VBox(5, passLbl, passField), 1, 2);
-        } else {
-            grid.add(new VBox(5, passLbl, passField), 1, 2);
-        }
+        grid.add(new VBox(5, passLbl, passField), 1, 2);
 
         dialogPane.setContent(grid);
 
         ButtonType btnSave = new ButtonType(existingUser == null ? "Save User" : "Update User", ButtonBar.ButtonData.OK_DONE);
         dialogPane.getButtonTypes().addAll(ButtonType.CANCEL, btnSave);
 
-        dialog.setResultConverter(b -> b == btnSave ? true : null);
-        dialog.showAndWait().ifPresent(confirmed -> {
+        final Button btOk = (Button) dialogPane.lookupButton(btnSave);
+        btOk.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
             if (usernameField.getText().trim().isEmpty() || nameField.getText().trim().isEmpty()) {
                 showThemedAlert(Alert.AlertType.WARNING, "Invalid Input", "Name and Username cannot be empty.");
+                event.consume();
                 return;
             }
 
+// --- SECURITY FIX: STRICT REGEX COMPLEXITY CHECK ---
+            if (existingUser == null && !com.kamotomo.pos.utils.SecurityUtil.isPasswordStrong(passField.getText().trim())) {
+                showThemedAlert(Alert.AlertType.WARNING, "Weak Password",
+                        "Initial password does not meet security requirements:\n" +
+                                "• Minimum of 8 characters\n" +
+                                "• At least 1 uppercase letter\n" +
+                                "• At least 1 lowercase letter\n" +
+                                "• At least 1 number\n" +
+                                "• At least 1 special character (@$!%*?&)");
+                event.consume();
+                return;
+            }
+
+            if (existingUser != null && !passField.getText().trim().isEmpty() && !com.kamotomo.pos.utils.SecurityUtil.isPasswordStrong(passField.getText().trim())) {
+                showThemedAlert(Alert.AlertType.WARNING, "Weak Password",
+                        "New password does not meet security requirements:\n" +
+                                "• Minimum of 8 characters\n" +
+                                "• At least 1 uppercase letter\n" +
+                                "• At least 1 lowercase letter\n" +
+                                "• At least 1 number\n" +
+                                "• At least 1 special character (@$!%*?&)");
+                event.consume();
+                return;
+            }
+        });
+
+        dialog.setResultConverter(b -> b == btnSave ? true : null);
+        dialog.showAndWait().ifPresent(confirmed -> {
             try (Connection conn = DatabaseConnection.getConnection()) {
                 if (existingUser == null) {
                     String sql = "INSERT INTO `user` (username, password, role, name, contactInfo, status) VALUES (?, ?, ?, ?, ?, 'Active')";
                     PreparedStatement stmt = conn.prepareStatement(sql);
                     stmt.setString(1, usernameField.getText().trim());
-                    stmt.setString(2, passField.getText().trim());
+                    // --- SECURITY FIX: HASH NEW PASSWORD ---
+                    stmt.setString(2, com.kamotomo.pos.utils.SecurityUtil.hashPassword(passField.getText().trim()));
                     stmt.setString(3, roleBox.getValue());
                     stmt.setString(4, nameField.getText().trim());
                     stmt.setString(5, contactField.getText().trim());
@@ -353,16 +380,29 @@ public class UsersController {
                     com.kamotomo.pos.utils.SystemLogger.logAction("User Management", "Created new user: " + usernameField.getText().trim());
                     showThemedAlert(Alert.AlertType.INFORMATION, "Success", "New user created successfully.");
                 } else {
-                    String sql = "UPDATE `user` SET username = ?, role = ?, name = ?, contactInfo = ? WHERE userID = ?";
-                    PreparedStatement stmt = conn.prepareStatement(sql);
-                    stmt.setString(1, usernameField.getText().trim());
-                    stmt.setString(2, roleBox.getValue());
-                    stmt.setString(3, nameField.getText().trim());
-                    stmt.setString(4, contactField.getText().trim());
-                    stmt.setInt(5, existingUser.getUserID());
-                    stmt.executeUpdate();
-
+                    if (passField.getText().trim().isEmpty()) {
+                        String sql = "UPDATE `user` SET username = ?, role = ?, name = ?, contactInfo = ? WHERE userID = ?";
+                        PreparedStatement stmt = conn.prepareStatement(sql);
+                        stmt.setString(1, usernameField.getText().trim());
+                        stmt.setString(2, roleBox.getValue());
+                        stmt.setString(3, nameField.getText().trim());
+                        stmt.setString(4, contactField.getText().trim());
+                        stmt.setInt(5, existingUser.getUserID());
+                        stmt.executeUpdate();
+                    } else {
+                        String sql = "UPDATE `user` SET username = ?, password = ?, role = ?, name = ?, contactInfo = ? WHERE userID = ?";
+                        PreparedStatement stmt = conn.prepareStatement(sql);
+                        stmt.setString(1, usernameField.getText().trim());
+                        // --- SECURITY FIX: HASH UPDATED PASSWORD ---
+                        stmt.setString(2, com.kamotomo.pos.utils.SecurityUtil.hashPassword(passField.getText().trim()));
+                        stmt.setString(3, roleBox.getValue());
+                        stmt.setString(4, nameField.getText().trim());
+                        stmt.setString(5, contactField.getText().trim());
+                        stmt.setInt(6, existingUser.getUserID());
+                        stmt.executeUpdate();
+                    }
                     com.kamotomo.pos.utils.SystemLogger.logAction("User Management", "Updated user: " + usernameField.getText().trim());
+                    showThemedAlert(Alert.AlertType.INFORMATION, "Success", "User details updated successfully.");
                 }
                 loadUserData();
             } catch (Exception e) {
@@ -373,41 +413,86 @@ public class UsersController {
     }
 
     private void resetPassword(UserAccount user) {
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Reset Password");
-        confirm.setHeaderText("Reset password for " + user.getUsername() + "?");
-        confirm.setContentText("This will change their password to '1234'.");
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Secure Password Reset");
+        dialog.setHeaderText("Set temporary password for " + user.getUsername());
 
-        DialogPane dialogPane = confirm.getDialogPane();
+        DialogPane dialogPane = dialog.getDialogPane();
         applyThemeToDialog(dialogPane);
 
-        Optional<ButtonType> result = confirm.showAndWait();
-        if (result.isPresent() && result.get() == ButtonType.OK) {
+        PasswordField tempPasswordField = new PasswordField();
+        tempPasswordField.setPromptText("Strict: Min 8, Upper, Lower, Num, Special");
+        tempPasswordField.setStyle("-fx-padding: 10; -fx-background-color: -kmtm-surface2; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-text-fill: -kmtm-text;");
+
+        VBox content = new VBox(10);
+        content.getChildren().addAll(new Label("New Temporary Password:"), tempPasswordField);
+        content.setPadding(new Insets(20));
+
+        dialogPane.setContent(content);
+
+        ButtonType btnReset = new ButtonType("Apply Reset", ButtonBar.ButtonData.OK_DONE);
+        dialogPane.getButtonTypes().addAll(ButtonType.CANCEL, btnReset);
+
+        final Button btOk = (Button) dialogPane.lookupButton(btnReset);
+        btOk.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            // --- SECURITY FIX: STRICT REGEX COMPLEXITY CHECK ---
+            if (!com.kamotomo.pos.utils.SecurityUtil.isPasswordStrong(tempPasswordField.getText())) {
+                showThemedAlert(Alert.AlertType.WARNING, "Security Requirement",
+                        "Validation Failed. Password must contain:\n\n" +
+                                "• Minimum of 8 characters\n" +
+                                "• At least 1 uppercase letter\n" +
+                                "• At least 1 lowercase letter\n" +
+                                "• At least 1 number\n" +
+                                "• At least 1 special character (@$!%*?&)");
+                event.consume();
+            }
+        });
+
+        dialog.setResultConverter(b -> b == btnReset ? tempPasswordField.getText() : null);
+
+        dialog.showAndWait().ifPresent(newPass -> {
             try (Connection conn = DatabaseConnection.getConnection()) {
                 String sql = "UPDATE `user` SET password = ? WHERE userID = ?";
                 PreparedStatement stmt = conn.prepareStatement(sql);
-                stmt.setString(1, "1234");
+                // --- SECURITY FIX: HASH TEMPORARY PASSWORD ---
+                stmt.setString(1, com.kamotomo.pos.utils.SecurityUtil.hashPassword(newPass));
                 stmt.setInt(2, user.getUserID());
                 stmt.executeUpdate();
 
-                // --- LOGGING ADDED HERE ---
                 com.kamotomo.pos.utils.SystemLogger.logAction("Security", "Reset password for user ID " + user.getUserID());
-
-                showThemedAlert(Alert.AlertType.INFORMATION, "Password Reset", "Password successfully reset to '1234'.");
-            } catch (Exception e) { e.printStackTrace(); }
-        }
+                showThemedAlert(Alert.AlertType.INFORMATION, "Password Reset", "Password for " + user.getUsername() + " successfully updated. Please provide them with the new temporary credentials.");
+            } catch (Exception e) {
+                e.printStackTrace();
+                showThemedAlert(Alert.AlertType.ERROR, "Database Error", "Failed to reset password.");
+            }
+        });
     }
 
     private void toggleUserStatus(UserAccount user) {
         String newStatus = user.getStatus().equals("Active") ? "Archived" : "Active";
-        try (Connection conn = DatabaseConnection.getConnection()) {
-            String sql = "UPDATE `user` SET status = ? WHERE userID = ?";
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            stmt.setString(1, newStatus);
-            stmt.setInt(2, user.getUserID());
-            stmt.executeUpdate();
-            loadUserData();
-        } catch (Exception e) { e.printStackTrace(); }
+        String action = newStatus.equals("Archived") ? "archive (deactivate)" : "restore";
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Confirm Account Status Change");
+        confirm.setHeaderText(null);
+        confirm.setContentText("Are you sure you want to " + action + " the account for " + user.getUsername() + "?");
+
+        applyThemeToDialog(confirm.getDialogPane());
+
+        confirm.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                try (Connection conn = DatabaseConnection.getConnection()) {
+                    String sql = "UPDATE `user` SET status = ? WHERE userID = ?";
+                    PreparedStatement stmt = conn.prepareStatement(sql);
+                    stmt.setString(1, newStatus);
+                    stmt.setInt(2, user.getUserID());
+                    stmt.executeUpdate();
+
+                    com.kamotomo.pos.utils.SystemLogger.logAction("User Management", "Changed status of user " + user.getUsername() + " to " + newStatus);
+                    loadUserData();
+                } catch (Exception e) { e.printStackTrace(); }
+            }
+        });
     }
 
     public static class UserAccount {
@@ -435,11 +520,9 @@ public class UsersController {
         public String getStatus() { return status; }
     }
 
-    // --- THE TARGETED THEME HUNTER ---
     private void applyThemeToDialog(DialogPane dialogPane) {
         if (usersTable == null || usersTable.getScene() == null) return;
 
-        // 1. Hunt down the exact active theme URL by walking up the application tree
         String activeThemeUrl = "";
         javafx.scene.Parent current = usersTable;
 
@@ -451,10 +534,9 @@ public class UsersController {
                 }
             }
             if (!activeThemeUrl.isEmpty()) break;
-            current = current.getParent(); // Move up to the next wrapper
+            current = current.getParent();
         }
 
-        // 2. If it wasn't on the nodes, check the Scene itself
         if (activeThemeUrl.isEmpty()) {
             for (String stylesheet : usersTable.getScene().getStylesheets()) {
                 if (stylesheet.contains("dark-theme.css") || stylesheet.contains("light-theme.css")) {
@@ -464,13 +546,11 @@ public class UsersController {
             }
         }
 
-        // 3. Clear any old/default styles and apply ONLY the correct theme file
         dialogPane.getStylesheets().clear();
         if (!activeThemeUrl.isEmpty()) {
             dialogPane.getStylesheets().add(activeThemeUrl);
         }
 
-        // 4. Ensure the CSS custom variables (-kmtm) are activated via the root class
         if (!dialogPane.getStyleClass().contains("custom-dialog")) {
             dialogPane.getStyleClass().addAll("custom-dialog", "root");
         }

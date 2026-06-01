@@ -1,6 +1,7 @@
 package com.kamotomo.pos;
 
 import com.kamotomo.pos.database.DatabaseConnection;
+import com.kamotomo.pos.utils.SupplyChainEngine;
 import com.kamotomo.pos.utils.UserSession;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleObjectProperty;
@@ -23,7 +24,6 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Optional;
 
 public class StockMonitorController {
 
@@ -62,14 +62,10 @@ public class StockMonitorController {
         setupTable();
         loadInventoryData();
 
-        // --- ROLE-BASED SECURITY LOCKDOWN ---
         if ("Employee".equalsIgnoreCase(UserSession.getInstance().getRole())) {
-            // Hide the entire "+ Restock" column in the table
             if (colAction != null) {
                 colAction.setVisible(false);
             }
-
-            // Hide the top action buttons
             if (btnDraftOrder != null) {
                 btnDraftOrder.setVisible(false);
                 btnDraftOrder.setManaged(false);
@@ -81,11 +77,9 @@ public class StockMonitorController {
         }
     }
 
-    // --- THE TARGETED THEME HUNTER ---
     private void applyThemeToDialog(DialogPane dialogPane) {
         if (stockTable == null || stockTable.getScene() == null) return;
 
-        // 1. Hunt down the exact active theme URL by walking up the application tree
         String activeThemeUrl = "";
         javafx.scene.Parent current = stockTable;
 
@@ -97,10 +91,9 @@ public class StockMonitorController {
                 }
             }
             if (!activeThemeUrl.isEmpty()) break;
-            current = current.getParent(); // Move up to the next wrapper
+            current = current.getParent();
         }
 
-        // 2. If it wasn't on the nodes, check the Scene itself
         if (activeThemeUrl.isEmpty()) {
             for (String stylesheet : stockTable.getScene().getStylesheets()) {
                 if (stylesheet.contains("dark-theme.css") || stylesheet.contains("light-theme.css")) {
@@ -110,13 +103,11 @@ public class StockMonitorController {
             }
         }
 
-        // 3. Clear any old/default styles and apply ONLY the correct theme file
         dialogPane.getStylesheets().clear();
         if (!activeThemeUrl.isEmpty()) {
             dialogPane.getStylesheets().add(activeThemeUrl);
         }
 
-        // 4. Ensure the CSS custom variables (-kmtm) are activated via the root class
         if (!dialogPane.getStyleClass().contains("custom-dialog")) {
             dialogPane.getStyleClass().addAll("custom-dialog", "root");
         }
@@ -283,10 +274,22 @@ public class StockMonitorController {
                     int stock = rs.getInt("stockQuantity");
                     int pendingQty = pendingMap.getOrDefault(id, 0);
 
+                    // Safely extract supplier Name
+                    String supplier = "General Supplier";
+                    try {
+                        supplier = rs.getString("supplierName");
+                        if (supplier == null || supplier.isEmpty()) supplier = "General Supplier";
+                    } catch (Exception ignored) {} // Fallback if column isn't properly created yet
+
                     String prefix = (category != null && category.length() >= 3) ? category.substring(0, 3).toUpperCase() : "ITM";
                     String sku = String.format("%s-%04d", prefix, id);
 
-                    masterData.add(new StockItem(id, sku, name, category, stock, pendingQty));
+                    int[] recs = SupplyChainEngine.getRestockRecommendations(id);
+                    int dynamicRop = recs[0] > 0 ? recs[0] : 5;
+                    int recommendedEoq = recs[1] > 0 ? recs[1] : 10;
+
+                    // Inject supplier into the StockItem
+                    masterData.add(new StockItem(id, sku, name, category, stock, pendingQty, dynamicRop, recommendedEoq, supplier));
                 }
             }
         } catch (Exception e) {
@@ -333,6 +336,7 @@ public class StockMonitorController {
 
         TextField qtyField = new TextField();
         qtyField.setPromptText("Quantity to add");
+        qtyField.setText(String.valueOf(item.getEoq()));
         qtyField.setTextFormatter(new TextFormatter<>(change -> change.getControlNewText().matches("\\d*") ? change : null));
 
         content.getChildren().addAll(infoLbl, qtyField);
@@ -356,14 +360,15 @@ public class StockMonitorController {
     @FXML
     protected void onDraftSupplierOrder() {
         ObservableList<PoItem> draftOrder = FXCollections.observableArrayList();
+        ObservableList<String> uniqueSuppliers = FXCollections.observableArrayList();
 
+        // Dynamically build list of active suppliers from inventory
         for (StockItem item : masterData) {
-            if ((item.getStatus().equals("CRITICAL") || item.getStatus().equals("LOW")) && item.getPendingQty() == 0) {
-                int suggestedOrderQty = (item.getRop() * 2) - item.getStock();
-                if (suggestedOrderQty < 10) suggestedOrderQty = 10;
-                draftOrder.add(new PoItem(item.getDbId(), item.getSku(), item.getName(), suggestedOrderQty));
+            if (!uniqueSuppliers.contains(item.getSupplier())) {
+                uniqueSuppliers.add(item.getSupplier());
             }
         }
+        if (uniqueSuppliers.isEmpty()) uniqueSuppliers.add("General Supplier");
 
         Dialog<Boolean> dialog = new Dialog<>();
         dialog.setTitle("Draft Purchase Order");
@@ -376,13 +381,9 @@ public class StockMonitorController {
         Label suppLbl = new Label("Supplier:");
         suppLbl.setStyle("-fx-text-fill: -kmtm-text;");
 
-        ComboBox<String> supplierBox = new ComboBox<>(FXCollections.observableArrayList(
-                "General Supplier A", "Yamaha Authorized", "Motolite Dist.", "Custom Supplier..."
-        ));
-        supplierBox.setEditable(true);
+        ComboBox<String> supplierBox = new ComboBox<>(uniqueSuppliers);
         supplierBox.setPrefWidth(350);
         HBox.setHgrow(supplierBox, Priority.ALWAYS);
-        supplierBox.getSelectionModel().selectFirst();
 
         topBox.getChildren().addAll(suppLbl, supplierBox);
 
@@ -435,12 +436,29 @@ public class StockMonitorController {
         HBox addBox = new HBox(10);
         addBox.setAlignment(Pos.CENTER_LEFT);
         ComboBox<String> allItemsBox = new ComboBox<>();
-        allItemsBox.setPromptText("Select any item from inventory...");
+        allItemsBox.setPromptText("Select any item from this supplier...");
         allItemsBox.setPrefWidth(250);
-        for (StockItem si : masterData) {
-            allItemsBox.getItems().add(si.getSku() + " - " + si.getName());
-        }
         Button btnAddManual = new Button("Add to Order");
+
+        // --- NEW: DYNAMIC SUPPLIER FILTERING LOGIC ---
+        supplierBox.valueProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                draftOrder.clear();
+                allItemsBox.getItems().clear();
+
+                for (StockItem item : masterData) {
+                    if (item.getSupplier().equalsIgnoreCase(newVal)) {
+                        // Populate manual addition combobox
+                        allItemsBox.getItems().add(item.getSku() + " - " + item.getName());
+
+                        // Auto-add critical/low items to the PO draft
+                        if ((item.getStatus().equals("CRITICAL") || item.getStatus().equals("LOW")) && item.getPendingQty() == 0) {
+                            draftOrder.add(new PoItem(item.getDbId(), item.getSku(), item.getName(), item.getEoq()));
+                        }
+                    }
+                }
+            }
+        });
 
         btnAddManual.setOnAction(e -> {
             String selection = allItemsBox.getValue();
@@ -452,7 +470,7 @@ public class StockMonitorController {
                     if (si.getPendingQty() > 0) {
                         showThemedAlert(Alert.AlertType.CONFIRMATION, "Warning: Double Order", "There are already " + si.getPendingQty() + " units on order! Are you sure you want to order more?");
                     }
-                    draftOrder.add(new PoItem(si.getDbId(), si.getSku(), si.getName(), 10));
+                    draftOrder.add(new PoItem(si.getDbId(), si.getSku(), si.getName(), si.getEoq()));
                     allItemsBox.setValue(null);
                     break;
                 }
@@ -466,6 +484,9 @@ public class StockMonitorController {
 
         ButtonType btnSavePrint = new ButtonType("Save & Print PO", ButtonBar.ButtonData.OK_DONE);
         dialogPane.getButtonTypes().addAll(ButtonType.CANCEL, btnSavePrint);
+
+        // Force selection to trigger the population of tables
+        supplierBox.getSelectionModel().selectFirst();
 
         dialog.setResultConverter(b -> b == btnSavePrint ? true : null);
         dialog.showAndWait().ifPresent(confirmed -> {
@@ -697,16 +718,19 @@ public class StockMonitorController {
         private final String status;
         private final int rop;
         private final int pendingQty;
+        private final int eoq;
+        private final String supplier;
 
-        public StockItem(int dbId, String sku, String name, String category, int stock, int pendingQty) {
+        public StockItem(int dbId, String sku, String name, String category, int stock, int pendingQty, int rop, int eoq, String supplier) {
             this.dbId = dbId;
             this.sku = sku;
             this.name = name;
             this.category = category == null ? "Uncategorized" : category;
             this.stock = stock;
             this.pendingQty = pendingQty;
-
-            this.rop = (2 * 2) + 5;
+            this.rop = rop;
+            this.eoq = eoq;
+            this.supplier = supplier == null ? "General Supplier" : supplier;
 
             if (this.stock <= (this.rop / 2)) this.status = "CRITICAL";
             else if (this.stock <= this.rop) this.status = "LOW";
@@ -719,7 +743,9 @@ public class StockMonitorController {
         public int getStock() { return stock; }
         public String getStatus() { return status; }
         public int getRop() { return rop; }
+        public int getEoq() { return eoq; }
         public int getPendingQty() { return pendingQty; }
+        public String getSupplier() { return supplier; }
     }
 
     public static class PoItem {

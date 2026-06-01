@@ -8,7 +8,10 @@
     <VBox spacing="15" HBox.hgrow="ALWAYS">
 
         <HBox spacing="10" alignment="CENTER_LEFT">
-            <TextField fx:id="searchField" onAction="#onSearchEnterPressed" promptText="🔍 Scan barcode or search..." HBox.hgrow="ALWAYS" style="-fx-background-color: -kmtm-surface; -fx-text-fill: -kmtm-text; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-padding: 10 15; -fx-font-family: 'IBM Plex Sans';"/>        </HBox>
+            <TextField fx:id="searchField" onAction="#onSearchEnterPressed" promptText="🔍 Scan barcode or search..." HBox.hgrow="ALWAYS" style="-fx-background-color: -kmtm-surface; -fx-text-fill: -kmtm-text; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-padding: 10 15; -fx-font-family: 'IBM Plex Sans';"/>
+
+            <Button fx:id="btnTransactionHistory" text="📜 Transaction Ledger" onAction="#onTransactionHistoryClick" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-padding: 10 15; -fx-cursor: hand; -fx-font-weight: bold;"/>
+        </HBox>
 
         <FlowPane hgap="8" vgap="8">
             <Button text="All" onAction="#onCategoryClick" styleClass="category-btn" />

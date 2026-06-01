@@ -143,10 +143,12 @@ public class OverviewController {
             lblActiveProducts.setText(String.valueOf(activeCount));
             lblLowStock.setText(String.valueOf(lowStockCount));
 
-            // 2. Get Totals & Recent Transactions
-            // Note: Update 'transactionDate' below to match your actual database column name if different!
-            String txSql = "SELECT t.transactionID, t.totalAmount, t.paymentMethod, t.transactionDate, u.name as cashier " +
-                    "FROM TRANSACTION t LEFT JOIN USER u ON t.userID = u.userID ORDER BY t.transactionID DESC";
+            // 2. Get Totals & Recent Transactions (Counts unique items & ignores voids)
+            String txSql = "SELECT t.transactionID, t.totalAmount, t.paymentMethod, t.transactionDate, u.name as cashier, " +
+                    "(SELECT COUNT(productID) FROM TRANSACTION_DETAILS td WHERE td.transactionID = t.transactionID) as itemCount " +
+                    "FROM TRANSACTION t LEFT JOIN user u ON t.userID = u.userID " +
+                    "WHERE t.status = 'Completed' OR t.status IS NULL " +
+                    "ORDER BY t.transactionID DESC";
             PreparedStatement txStmt = conn.prepareStatement(txSql);
             ResultSet rsTx = txStmt.executeQuery();
 
@@ -177,8 +179,13 @@ public class OverviewController {
                 if (recentTxns.size() < 15) {
                     String formattedId = "T" + String.format("%012d", rsTx.getInt("transactionID"));
                     String dateStr = txDate != null ? sdf.format(txDate) : "Unknown";
+
+                    // Fetch the actual dynamic item count from the new SQL query
+                    int itemCount = rsTx.getInt("itemCount");
+                    String itemDisplay = (itemCount > 0) ? itemCount + " item(s)" : "0 items";
+
                     recentTxns.add(new TransactionSummary(
-                            formattedId, dateStr, "View Items", String.format("₱%,.2f", amt),
+                            formattedId, dateStr, itemDisplay, String.format("₱%,.2f", amt),
                             rsTx.getString("paymentMethod"), rsTx.getString("cashier")
                     ));
                 }

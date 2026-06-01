@@ -5,7 +5,7 @@
 
 <StackPane xmlns:fx="http://javafx.com/fxml" fx:controller="com.kamotomo.pos.HelloController" styleClass="root">
 
-  <VBox alignment="CENTER" spacing="25" maxWidth="400" maxHeight="500" styleClass="login-card">
+  <VBox alignment="CENTER" spacing="20" maxWidth="400" maxHeight="500" styleClass="login-card">
 
     <VBox alignment="CENTER" spacing="5">
       <Label text="KAMOTOMO" styleClass="login-title"/>
@@ -28,7 +28,11 @@
 
     <Label fx:id="errorMessage" text="" alignment="CENTER" style="-fx-text-fill: #f03d3d; -fx-font-size: 12px; -fx-font-weight: bold; -fx-min-height: 18;"/>
 
-    <Button text="SECURE LOGIN" onAction="#onLoginButtonClick" maxWidth="Infinity" styleClass="login-btn"/>
+    <VBox spacing="10" alignment="CENTER">
+      <Button text="LOGIN" onAction="#onLoginButtonClick" maxWidth="Infinity" styleClass="login-btn"/>
+
+      <Hyperlink text="Forgot Password?" onAction="#onForgotPasswordClick" style="-fx-text-fill: -kmtm-text-dim; -fx-font-size: 11px;"/>
+    </VBox>
 
   </VBox>
 </StackPane>

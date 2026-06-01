@@ -11,6 +11,9 @@ public class HelpController {
     @FXML private TitledPane adminPaneUsers;
     @FXML private TitledPane adminPaneLogs;
     @FXML private TitledPane adminPaneMaintenance;
+    @FXML private TitledPane adminPaneVoids;
+    @FXML private TitledPane adminPaneReports;
+    @FXML private TitledPane adminPaneRecovery;
 
     @FXML
     public void initialize() {
@@ -33,6 +36,21 @@ public class HelpController {
             if (adminPaneMaintenance != null) {
                 adminPaneMaintenance.setVisible(false);
                 adminPaneMaintenance.setManaged(false);
+            }
+
+            if (adminPaneVoids != null) {
+                adminPaneVoids.setVisible(false);
+                adminPaneVoids.setManaged(false);
+            }
+
+            if (adminPaneReports != null) {
+                adminPaneReports.setVisible(false);
+                adminPaneReports.setManaged(false);
+            }
+
+            if (adminPaneRecovery != null) {
+                adminPaneRecovery.setVisible(false);
+                adminPaneRecovery.setManaged(false);
             }
         }
     }

@@ -43,6 +43,15 @@
                     </VBox>
                 </TitledPane>
 
+                <TitledPane text="System Information &amp; Support" style="-fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold;">
+                    <VBox spacing="10" style="-fx-background-color: -kmtm-surface2; -fx-padding: 15;">
+                        <Label text="KaMotoMo Point of Sale &amp; Enterprise Inventory System" style="-fx-text-fill: -kmtm-text; -fx-font-weight: bold;"/>
+                        <Label text="Version: 1.0.0 (Release Build)" style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="Database Engine: MySQL 8.0" style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="For critical technical support, database recovery, or system maintenance, please contact the lead system administrator." style="-fx-text-fill: -kmtm-text-dim; -fx-wrap-text: true;"/>
+                    </VBox>
+                </TitledPane>
+
                 <TitledPane fx:id="adminPaneInventory" text="⚙ [ADMIN] Adding, Editing, and Archiving Products" style="-fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold; -fx-text-fill: -kmtm-primary;">
                     <VBox spacing="10" style="-fx-background-color: -kmtm-surface2; -fx-padding: 15; -fx-border-color: -kmtm-primary; -fx-border-width: 0 0 0 4;">
                         <Label text="Adding/Editing:" style="-fx-text-fill: -kmtm-primary; -fx-font-weight: bold;"/>
@@ -77,6 +86,33 @@
                         <Label text="3. If the computer breaks, this file contains everything needed to perfectly restore the shop's operations on a new PC." style="-fx-text-fill: -kmtm-text;"/>
                     </VBox>
                 </TitledPane>
+
+                <TitledPane fx:id="adminPaneVoids" text="⚙ [ADMIN] Voiding a Transaction" style="-fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold; -fx-text-fill: -kmtm-primary;">
+                    <VBox spacing="10" style="-fx-background-color: -kmtm-surface2; -fx-padding: 15; -fx-border-color: -kmtm-primary; -fx-border-width: 0 0 0 4;">
+                        <Label text="1. From the POS screen, click the 'Transaction Ledger' button at the top." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="2. Locate the specific receipt using the search bar or by scrolling." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="3. Select the row and click 'Void Selected Transaction'." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="4. Enter your Administrative password to authorize the void. The system will autonomously return the items to active inventory and deduct the total from the day's revenue." style="-fx-text-fill: -kmtm-text;"/>
+                    </VBox>
+                </TitledPane>
+
+                <TitledPane fx:id="adminPaneReports" text="⚙ [ADMIN] Reading Reports &amp; Market Basket Insights" style="-fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold; -fx-text-fill: -kmtm-primary;">
+                    <VBox spacing="10" style="-fx-background-color: -kmtm-surface2; -fx-padding: 15; -fx-border-color: -kmtm-primary; -fx-border-width: 0 0 0 4;">
+                        <Label text="• Key Performance Indicators (KPIs): Use the dropdown at the top to filter revenue and sales data by Today, This Month, or All Time." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="• Market Basket Analysis: The 'Smart Insights' table uses the Apriori algorithm to automatically detect which items are most frequently purchased together. Use this data to bundle products or adjust store layouts." style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="• Printing: Click 'Export Report' to generate a formatted physical summary of the current analytics." style="-fx-text-fill: -kmtm-text;"/>
+                    </VBox>
+                </TitledPane>
+
+                <TitledPane fx:id="adminPaneRecovery" text="⚙ [ADMIN] Forgotten Password" style="-fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold; -fx-text-fill: -kmtm-primary;">
+                    <VBox spacing="10" style="-fx-background-color: -kmtm-surface2; -fx-padding: 15; -fx-border-color: -kmtm-primary; -fx-border-width: 0 0 0 4;">
+                        <Label text="In case of forgotten password, please use the Forgotten Password button found in the Login Screen" style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="Please enter the recovery code 'KMTM-A8F2-99BQ-Z1P0' using the username of the initial admin account provided in the system" style="-fx-text-fill: -kmtm-text;"/>
+                        <Label text="Please write this code in a piece of paper and hide it in a secure place, and if all else fails, contact the lead system programmer" style="-fx-text-fill: -kmtm-text;"/>
+                    </VBox>
+                </TitledPane>
+
+
 
             </panes>
         </Accordion>
