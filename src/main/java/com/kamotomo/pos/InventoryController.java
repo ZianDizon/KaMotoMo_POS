@@ -373,6 +373,8 @@ public class InventoryController {
         grid.setHgap(20);
         grid.setVgap(15);
         grid.setPadding(new Insets(20, 20, 10, 20));
+        grid.setPrefWidth(550);
+        grid.setMaxWidth(Region.USE_PREF_SIZE);
 
         ColumnConstraints col1 = new ColumnConstraints();
         col1.setPercentWidth(50);
@@ -442,6 +444,12 @@ public class InventoryController {
 
             if (name.isEmpty() || name.length() > 50) {
                 showErrorPopup("Invalid Name", "Please enter a valid product name. It cannot be empty or longer than 50 characters.");
+                event.consume();
+                return;
+            }
+
+            if (!name.matches("^[a-zA-Z0-9 \\-\\(\\)\\.]+$")) {
+                showErrorPopup("Invalid Characters", "The product name contains restricted symbols.\n\nPlease only use letters, numbers, spaces, hyphens (-), periods (.), or parentheses ().");
                 event.consume();
                 return;
             }
@@ -530,8 +538,13 @@ public class InventoryController {
                         }
                     }
                     loadDataFromDatabase();
+                } catch (java.sql.SQLIntegrityConstraintViolationException e) {
+                    // This specifically catches actual duplicates or strict database constraints
+                    showErrorPopup("Database Conflict", "The system rejected the entry. This usually means the Product Name already exists in the system.\n\nMySQL Output: " + e.getMessage());
                 } catch (Exception e) {
-                    showErrorPopup("Database Error", "We encountered a problem saving this product. Please check if the product name already exists.");
+                    // This catches everything else (Foreign Key failures, disconnection, etc.)
+                    e.printStackTrace();
+                    showErrorPopup("System Error", "An unexpected database error occurred while saving.\n\nMySQL Output: " + e.getMessage());
                 }
             }
             return null;
