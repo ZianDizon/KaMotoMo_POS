@@ -50,6 +50,7 @@ public class HelloController {
             ResultSet rs = checkStmt.executeQuery();
 
             if (rs.next()) {
+
                 int userId = rs.getInt("userID");
                 String dbHash = rs.getString("password");
                 String status = rs.getString("status");
