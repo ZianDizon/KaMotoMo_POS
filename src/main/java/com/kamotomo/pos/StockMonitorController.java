@@ -1,6 +1,7 @@
 package com.kamotomo.pos;
 
 import com.kamotomo.pos.database.DatabaseConnection;
+import com.kamotomo.pos.utils.SystemLogger;
 import com.kamotomo.pos.utils.SupplyChainEngine;
 import com.kamotomo.pos.utils.UserSession;
 import javafx.beans.binding.Bindings;
@@ -237,9 +238,10 @@ public class StockMonitorController {
                 super.updateItem(item, empty);
                 if (empty || item == null) { setGraphic(null); }
                 else {
-                    Button btn = new Button("+ Restock");
+                    // --- NEW: RENAMED TO MANAGE STOCK ---
+                    Button btn = new Button("± Manage");
                     btn.getStyleClass().add("action-btn");
-                    btn.setOnAction(e -> showRestockDialog(item));
+                    btn.setOnAction(e -> showAdjustStockDialog(item));
                     setGraphic(btn);
                 }
             }
@@ -274,12 +276,11 @@ public class StockMonitorController {
                     int stock = rs.getInt("stockQuantity");
                     int pendingQty = pendingMap.getOrDefault(id, 0);
 
-                    // Safely extract supplier Name
                     String supplier = "General Supplier";
                     try {
                         supplier = rs.getString("supplierName");
                         if (supplier == null || supplier.isEmpty()) supplier = "General Supplier";
-                    } catch (Exception ignored) {} // Fallback if column isn't properly created yet
+                    } catch (Exception ignored) {}
 
                     String prefix = (category != null && category.length() >= 3) ? category.substring(0, 3).toUpperCase() : "ITM";
                     String sku = String.format("%s-%04d", prefix, id);
@@ -288,7 +289,6 @@ public class StockMonitorController {
                     int dynamicRop = recs[0] > 0 ? recs[0] : 5;
                     int recommendedEoq = recs[1] > 0 ? recs[1] : 10;
 
-                    // Inject supplier into the StockItem
                     masterData.add(new StockItem(id, sku, name, category, stock, pendingQty, dynamicRop, recommendedEoq, supplier));
                 }
             }
@@ -321,9 +321,10 @@ public class StockMonitorController {
         });
     }
 
-    private void showRestockDialog(StockItem item) {
-        Dialog<Integer> dialog = new Dialog<>();
-        dialog.setTitle("Restock Item");
+    // --- NEW: ADJUST STOCK DIALOG (SUPPORTS ADDITION AND REDUCTION) ---
+    private void showAdjustStockDialog(StockItem item) {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Adjust Stock Level");
 
         DialogPane dialogPane = dialog.getDialogPane();
         applyThemeToDialog(dialogPane);
@@ -334,27 +335,70 @@ public class StockMonitorController {
         Label infoLbl = new Label(item.getSku() + " — " + item.getName() + "\n(Current: " + item.getStock() + " units)");
         infoLbl.setStyle("-fx-font-family: 'IBM Plex Sans'; -fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: -kmtm-text;");
 
+        ComboBox<String> actionBox = new ComboBox<>();
+        actionBox.getItems().addAll("Add Stock (Delivery)", "Deduct Stock (Damaged/Lost)");
+        actionBox.getSelectionModel().selectFirst();
+        actionBox.setStyle("-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text;");
+        actionBox.setMaxWidth(Double.MAX_VALUE);
+
         TextField qtyField = new TextField();
-        qtyField.setPromptText("Quantity to add");
-        qtyField.setText(String.valueOf(item.getEoq()));
+        qtyField.setPromptText("Quantity");
+        qtyField.setText(String.valueOf(item.getEoq())); // Default to EOQ recommendation
         qtyField.setTextFormatter(new TextFormatter<>(change -> change.getControlNewText().matches("\\d*") ? change : null));
+        qtyField.setStyle("-fx-padding: 8;");
 
-        content.getChildren().addAll(infoLbl, qtyField);
+        TextField reasonField = new TextField();
+        reasonField.setPromptText("Reason (Mandatory for deductions)");
+        reasonField.setStyle("-fx-padding: 8;");
 
-        ButtonType btnAdd = new ButtonType("Add Stock", ButtonBar.ButtonData.OK_DONE);
-        dialogPane.getButtonTypes().addAll(ButtonType.CANCEL, btnAdd);
+        content.getChildren().addAll(infoLbl, new Label("Action:"), actionBox, new Label("Quantity:"), qtyField, new Label("Reason:"), reasonField);
+
+        ButtonType btnSave = new ButtonType("Confirm Adjustment", ButtonBar.ButtonData.OK_DONE);
+        dialogPane.getButtonTypes().addAll(ButtonType.CANCEL, btnSave);
         dialogPane.setContent(content);
 
-        dialog.setResultConverter(b -> b == btnAdd && !qtyField.getText().isEmpty() ? Integer.parseInt(qtyField.getText()) : null);
-        dialog.showAndWait().ifPresent(qtyToAdd -> {
-            try (Connection conn = DatabaseConnection.getConnection()) {
-                PreparedStatement stmt = conn.prepareStatement("UPDATE PRODUCT SET stockQuantity = stockQuantity + ? WHERE productID = ?");
-                stmt.setInt(1, qtyToAdd);
-                stmt.setInt(2, item.getDbId());
-                stmt.executeUpdate();
-                loadInventoryData();
-            } catch (Exception e) { e.printStackTrace(); }
+        final Button saveButton = (Button) dialogPane.lookupButton(btnSave);
+        saveButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            if (qtyField.getText().isEmpty() || Integer.parseInt(qtyField.getText()) <= 0) {
+                showThemedAlert(Alert.AlertType.WARNING, "Invalid Quantity", "Please enter a positive number to adjust by.");
+                event.consume();
+                return;
+            }
+            if (actionBox.getValue().contains("Deduct") && Integer.parseInt(qtyField.getText()) > item.getStock()) {
+                showThemedAlert(Alert.AlertType.WARNING, "Invalid Quantity", "You cannot deduct more stock than is currently available.");
+                event.consume();
+                return;
+            }
+            if (actionBox.getValue().contains("Deduct") && reasonField.getText().trim().isEmpty()) {
+                showThemedAlert(Alert.AlertType.WARNING, "Reason Required", "Please provide a clear reason for deducting stock to maintain the system audit trail.");
+                event.consume();
+                return;
+            }
         });
+
+        dialog.setResultConverter(b -> {
+            if (b == btnSave) {
+                int qty = Integer.parseInt(qtyField.getText());
+                boolean isDeduct = actionBox.getValue().contains("Deduct");
+                String reason = reasonField.getText().trim();
+                if (reason.isEmpty()) reason = "Standard Restock";
+
+                int dbChange = isDeduct ? -qty : qty;
+                try (Connection conn = DatabaseConnection.getConnection()) {
+                    PreparedStatement stmt = conn.prepareStatement("UPDATE PRODUCT SET stockQuantity = stockQuantity + ? WHERE productID = ?");
+                    stmt.setInt(1, dbChange);
+                    stmt.setInt(2, item.getDbId());
+                    stmt.executeUpdate();
+
+                    String logMsg = (isDeduct ? "Deducted " : "Added ") + qty + " units to [" + item.getName() + "]. Reason: " + reason;
+                    SystemLogger.logAction("Stock Monitor", logMsg);
+
+                    loadInventoryData();
+                } catch (Exception e) { e.printStackTrace(); }
+            }
+            return null;
+        });
+        dialog.showAndWait();
     }
 
     @FXML
@@ -362,7 +406,6 @@ public class StockMonitorController {
         ObservableList<PoItem> draftOrder = FXCollections.observableArrayList();
         ObservableList<String> uniqueSuppliers = FXCollections.observableArrayList();
 
-        // Dynamically build list of active suppliers from inventory
         for (StockItem item : masterData) {
             if (!uniqueSuppliers.contains(item.getSupplier())) {
                 uniqueSuppliers.add(item.getSupplier());
@@ -440,7 +483,6 @@ public class StockMonitorController {
         allItemsBox.setPrefWidth(250);
         Button btnAddManual = new Button("Add to Order");
 
-        // --- NEW: DYNAMIC SUPPLIER FILTERING LOGIC ---
         supplierBox.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 draftOrder.clear();
@@ -448,10 +490,7 @@ public class StockMonitorController {
 
                 for (StockItem item : masterData) {
                     if (item.getSupplier().equalsIgnoreCase(newVal)) {
-                        // Populate manual addition combobox
                         allItemsBox.getItems().add(item.getSku() + " - " + item.getName());
-
-                        // Auto-add critical/low items to the PO draft
                         if ((item.getStatus().equals("CRITICAL") || item.getStatus().equals("LOW")) && item.getPendingQty() == 0) {
                             draftOrder.add(new PoItem(item.getDbId(), item.getSku(), item.getName(), item.getEoq()));
                         }
@@ -485,7 +524,6 @@ public class StockMonitorController {
         ButtonType btnSavePrint = new ButtonType("Save & Print PO", ButtonBar.ButtonData.OK_DONE);
         dialogPane.getButtonTypes().addAll(ButtonType.CANCEL, btnSavePrint);
 
-        // Force selection to trigger the population of tables
         supplierBox.getSelectionModel().selectFirst();
 
         dialog.setResultConverter(b -> b == btnSavePrint ? true : null);
@@ -517,6 +555,9 @@ public class StockMonitorController {
                 }
                 itemStmt.executeBatch();
                 conn.commit();
+
+                // LOG THE DRAFTING WITH SUPPLIER NAME
+                SystemLogger.logAction("Stock Monitor", "Drafted PO #" + newPoId + " for supplier: " + selectedSupplier);
 
                 executeFinalPrintout(draftOrder, selectedSupplier, newPoId);
                 loadInventoryData();
@@ -631,6 +672,8 @@ public class StockMonitorController {
             updateStock.executeBatch();
             conn.commit();
 
+            SystemLogger.logAction("Stock Monitor", "Received and processed PO #" + poId);
+
             loadInventoryData();
             showThemedAlert(Alert.AlertType.INFORMATION, "Order Received", "Inventory stock has been automatically updated.");
         } catch (Exception e) { e.printStackTrace(); }
@@ -641,6 +684,8 @@ public class StockMonitorController {
             PreparedStatement updatePo = conn.prepareStatement("UPDATE PURCHASE_ORDER SET status = 'Cancelled' WHERE poId = ?");
             updatePo.setInt(1, poId);
             updatePo.executeUpdate();
+
+            SystemLogger.logAction("Stock Monitor", "Cancelled PO #" + poId);
 
             loadInventoryData();
             showThemedAlert(Alert.AlertType.INFORMATION, "Order Cancelled", "PO #" + poId + " has been cancelled. Quantities removed from pending status.");

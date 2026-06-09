@@ -13,6 +13,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.Region;
 import javafx.stage.FileChooser;
 import java.io.File;
 import java.io.PrintWriter;
@@ -28,15 +29,17 @@ public class LogsController {
     @FXML private TableColumn<LogEntry, String> colUser;
     @FXML private TableColumn<LogEntry, String> colAction;
     @FXML private TableColumn<LogEntry, String> colDetails;
-
-    // Add this column to your logs-view.fxml!
     @FXML private TableColumn<LogEntry, LogEntry> colActionBtn;
 
+    // The Intuitive Filter Elements
     @FXML private TextField searchField;
     @FXML private DatePicker dateFilter;
+    @FXML private ComboBox<String> actionFilter;
+    @FXML private ComboBox<String> userFilter;
 
     private ObservableList<LogEntry> masterData = FXCollections.observableArrayList();
     private FilteredList<LogEntry> filteredData;
+    private boolean isAlertShowing = false;
 
     @FXML
     public void initialize() {
@@ -46,14 +49,21 @@ public class LogsController {
         colDetails.setCellValueFactory(new PropertyValueFactory<>("details"));
 
         setupActionColumn();
+
+        filteredData = new FilteredList<>(masterData, p -> true);
+        logsTable.setItems(filteredData);
+
         loadLogs();
 
+        // Bind all intuitive filters to the apply method
         searchField.textProperty().addListener((obs, oldVal, newVal) -> applyFilters());
         dateFilter.valueProperty().addListener((obs, oldVal, newVal) -> applyFilters());
+        if (actionFilter != null) actionFilter.valueProperty().addListener((obs, oldVal, newVal) -> applyFilters());
+        if (userFilter != null) userFilter.valueProperty().addListener((obs, oldVal, newVal) -> applyFilters());
     }
 
     private void setupActionColumn() {
-        if (colActionBtn == null) return; // Safety check if FXML isn't updated yet
+        if (colActionBtn == null) return;
 
         colActionBtn.setCellValueFactory(param -> new SimpleObjectProperty<>(param.getValue()));
         colActionBtn.setCellFactory(tc -> new TableCell<LogEntry, LogEntry>() {
@@ -62,10 +72,11 @@ public class LogsController {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
                     setGraphic(null);
-                } else if ("Transaction".equalsIgnoreCase(item.getAction())) {
+                    // INCLUDES OFFLINE SYNC TRANSACTIONS
+                } else if (item.getAction().toLowerCase().contains("transaction")) {
                     Button viewBtn = new Button("📄 Receipt");
                     viewBtn.setStyle("-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-primary; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-cursor: hand; -fx-font-size: 11px;");
-                    viewBtn.setOnAction(e -> parseAndShowReceipt(item)); // Pass the whole 'item' object
+                    viewBtn.setOnAction(e -> parseAndShowReceipt(item));
                     setGraphic(viewBtn);
                 } else {
                     setGraphic(null);
@@ -76,50 +87,86 @@ public class LogsController {
 
     private void loadLogs() {
         masterData.clear();
+
+        // Use Sets to automatically gather unique values for our intuitive filters
+        java.util.Set<String> actionTypes = new java.util.TreeSet<>();
+        java.util.Set<String> users = new java.util.TreeSet<>();
+
         try (Connection conn = DatabaseConnection.getConnection()) {
             String sql = "SELECT * FROM `system_log` ORDER BY timestamp DESC";
             PreparedStatement stmt = conn.prepareStatement(sql);
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
-                masterData.add(new LogEntry(
-                        rs.getString("timestamp"), rs.getString("username"),
-                        rs.getString("action"), rs.getString("details")
-                ));
+                String timestamp = rs.getString("timestamp");
+                String user = rs.getString("username");
+                String action = rs.getString("action");
+                String details = rs.getString("details");
+
+                masterData.add(new LogEntry(timestamp, user, action, details));
+
+                if (action != null) actionTypes.add(action);
+                if (user != null) users.add(user);
             }
         } catch (Exception e) { e.printStackTrace(); }
 
-        filteredData = new FilteredList<>(masterData, p -> true);
-        logsTable.setItems(filteredData);
+        // Populate dropdowns dynamically based on what actually exists in the database
+        if (actionFilter != null) {
+            ObservableList<String> actionItems = FXCollections.observableArrayList("All Actions");
+            actionItems.addAll(actionTypes);
+            actionFilter.setItems(actionItems);
+            actionFilter.getSelectionModel().selectFirst();
+        }
+
+        if (userFilter != null) {
+            ObservableList<String> userItems = FXCollections.observableArrayList("All Users");
+            userItems.addAll(users);
+            userFilter.setItems(userItems);
+            userFilter.getSelectionModel().selectFirst();
+        }
+
+        applyFilters();
     }
 
     private void applyFilters() {
         String search = searchField.getText().toLowerCase();
+        String selectedAction = actionFilter != null ? actionFilter.getValue() : "All Actions";
+        String selectedUser = userFilter != null ? userFilter.getValue() : "All Users";
+
         filteredData.setPredicate(log -> {
-            boolean matchesSearch = search.isEmpty() ||
-                    log.getUsername().toLowerCase().contains(search) ||
-                    log.getAction().toLowerCase().contains(search) ||
-                    log.getDetails().toLowerCase().contains(search);
+            boolean matchesSearch = search.isEmpty() || log.getDetails().toLowerCase().contains(search);
 
             boolean matchesDate = true;
             if (dateFilter.getValue() != null) {
                 matchesDate = log.getTimestamp().startsWith(dateFilter.getValue().toString());
             }
-            return matchesSearch && matchesDate;
+
+            boolean matchesAction = selectedAction == null || selectedAction.equals("All Actions") || log.getAction().equalsIgnoreCase(selectedAction);
+            boolean matchesUser = selectedUser == null || selectedUser.equals("All Users") || log.getUsername().equalsIgnoreCase(selectedUser);
+
+            return matchesSearch && matchesDate && matchesAction && matchesUser;
         });
     }
 
     private void parseAndShowReceipt(LogEntry log) {
         try {
-            // Extract the Transaction ID from the log details
-            String cleanDetails = log.getDetails().replace("Sale ID: ", "");
-            String idString = cleanDetails.split(" ")[0].trim();
-            int txId = Integer.parseInt(idString);
+            int txId;
+            String details = log.getDetails();
 
-            // Pass the ID, plus the date and cashier from the log entry
+            // Handles both normal "Sale ID:" and "Offline Sale #" strings
+            if (log.getAction().contains("Offline") && details.contains("#")) {
+                String idPart = details.substring(details.indexOf("#") + 1);
+                txId = Integer.parseInt(idPart.split(" ")[0].trim());
+            } else if (details.contains("Sale ID:")) {
+                String cleanDetails = details.replace("Sale ID: ", "");
+                txId = Integer.parseInt(cleanDetails.split(" ")[0].trim());
+            } else {
+                throw new Exception("Unrecognized receipt log format.");
+            }
+
             renderReceiptPopup(txId, log.getTimestamp(), log.getUsername());
         } catch (Exception e) {
-            Alert alert = new Alert(Alert.AlertType.ERROR, "Could not process receipt structure.");
-            alert.showAndWait();
+            e.printStackTrace();
+            showThemedAlert(Alert.AlertType.ERROR, "Parse Error", "Could not reconstruct the receipt for this specific log entry.");
         }
     }
 
@@ -130,15 +177,13 @@ public class LogsController {
         applyThemeToDialog(dialogPane);
         dialogPane.getStyleClass().add("custom-dialog");
 
-        // --- FETCH TRANSACTION METADATA ---
         String paymentMethod = "Unknown";
         double discountAmount = 0.0;
         String discountReason = "";
         double finalTotal = 0.0;
-        double tenderedAmount = 0.0; // New variable
+        double tenderedAmount = 0.0;
 
         try (Connection conn = DatabaseConnection.getConnection()) {
-            // UPGRADED: Added amountTendered to the SELECT query
             PreparedStatement stmt = conn.prepareStatement("SELECT paymentMethod, discountAmount, discountReason, totalAmount, amountTendered FROM TRANSACTION WHERE transactionID = ?");
             stmt.setInt(1, txId);
             ResultSet rs = stmt.executeQuery();
@@ -151,7 +196,6 @@ public class LogsController {
             }
         } catch (Exception e) { e.printStackTrace(); }
 
-        // --- RECONSTRUCT THERMAL RECEIPT ---
         VBox receiptBox = new VBox(8);
         receiptBox.setAlignment(Pos.TOP_CENTER);
         receiptBox.setPrefWidth(250);
@@ -163,7 +207,7 @@ public class LogsController {
         title.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
         title.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
 
-        Label details = new Label("TXN: " + txId + "\nDate: " + timestamp + "\nCashier: " + cashier + "\nPay: " + paymentMethod);
+        Label details = new Label("TXN: " + txId + " [REPRINT]\nDate: " + timestamp + "\nCashier: " + cashier + "\nPay: " + paymentMethod);
         details.setAlignment(Pos.CENTER_LEFT);
         details.setMaxWidth(Double.MAX_VALUE);
 
@@ -173,7 +217,6 @@ public class LogsController {
         VBox itemsBox = new VBox(2);
         double rawSubtotal = 0.0;
 
-        // Fetch Line Items
         try (Connection conn = DatabaseConnection.getConnection()) {
             String sql = "SELECT p.productName, td.quantity, td.subtotal " +
                     "FROM TRANSACTION_DETAILS td " +
@@ -189,7 +232,7 @@ public class LogsController {
                 double subTotal = rs.getDouble("subtotal");
 
                 rawSubtotal += subTotal;
-                double unitPrice = subTotal / qty; // Reverse-engineer unit price for display
+                double unitPrice = subTotal / qty;
 
                 Label nameRow = new Label(pName);
                 nameRow.setWrapText(true);
@@ -204,32 +247,37 @@ public class LogsController {
 
         receiptBox.getChildren().addAll(title, divider1, details, divider2, itemsBox, new Label(" "));
 
-        // Reconstruct Discounts (if applicable)
         if (discountAmount > 0) {
             receiptBox.getChildren().add(new Label(String.format("SUBTOTAL:   ₱%.2f", rawSubtotal)));
             receiptBox.getChildren().add(new Label(String.format("DISCOUNT:  -₱%.2f", discountAmount)));
-            receiptBox.getChildren().add(new Label(String.format("REASON:     %s", discountReason != null ? discountReason : "Manual")));
+            receiptBox.getChildren().add(new Label(String.format("REASON:     %s", discountReason != null && !discountReason.isEmpty() ? discountReason : "Manual")));
             receiptBox.getChildren().add(new Label("------------------------"));
         }
 
         Label totalLbl = new Label(String.format("TOTAL:      ₱%.2f", finalTotal));
         totalLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
 
-        // Safety check: If it's an old transaction from before we added the database column,
-        // assume they paid the exact amount to prevent negative change.
-        if (tenderedAmount < finalTotal) {
-            tenderedAmount = finalTotal;
-        }
+        if (tenderedAmount < finalTotal) tenderedAmount = finalTotal;
 
         double changeAmount = tenderedAmount - finalTotal;
 
         Label tenderLbl = new Label(String.format("Tendered:   ₱%.2f", tenderedAmount));
         Label changeLbl = new Label(String.format("Change:     ₱%.2f", changeAmount));
 
-        // UPGRADED: Now identical to the POS receipt
-        receiptBox.getChildren().addAll(totalLbl, tenderLbl, changeLbl, new Label("\nThank you!\nIngat sa kalsada! 🏍"));
+        receiptBox.getChildren().addAll(totalLbl, tenderLbl, changeLbl, new Label("------------------------"));
 
-        // Wrap in a container for the popup UI
+        // Match the dynamic VAT from POS
+        double currentTaxRate = com.kamotomo.pos.utils.SystemSettings.getTaxRate();
+        double currentVatableSales = finalTotal / (1 + currentTaxRate);
+        double currentVatAmount = finalTotal - currentVatableSales;
+        int displayTaxPercent = (int) Math.round(currentTaxRate * 100);
+
+        Label vatableLbl = new Label(String.format("VATable Sales: ₱%.2f", currentVatableSales));
+        Label vatLbl = new Label(String.format("VAT (%d%%):     ₱%.2f", displayTaxPercent, currentVatAmount));
+        receiptBox.getChildren().addAll(vatableLbl, vatLbl);
+
+        receiptBox.getChildren().add(new Label("\nThank you!\nIngat sa kalsada! 🏍"));
+
         HBox containerBox = new HBox(receiptBox);
         containerBox.setAlignment(Pos.CENTER);
         containerBox.setPadding(new Insets(20));
@@ -239,7 +287,6 @@ public class LogsController {
         ButtonType closeType = new ButtonType("Close", ButtonBar.ButtonData.CANCEL_CLOSE);
         dialogPane.getButtonTypes().addAll(printType, closeType);
 
-        // Add Print Functionality
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == printType) {
                 javafx.print.PrinterJob job = javafx.print.PrinterJob.createPrinterJob();
@@ -247,7 +294,6 @@ public class LogsController {
                     boolean success = job.printPage(receiptBox);
                     if (success) job.endJob();
 
-                    // Log that a reprint was issued
                     com.kamotomo.pos.utils.SystemLogger.logAction("Transaction", "Reprinted receipt for Sale ID: " + txId);
                 }
             }
@@ -261,10 +307,18 @@ public class LogsController {
     protected void onResetFilters() {
         searchField.clear();
         dateFilter.setValue(null);
+        if (actionFilter != null) actionFilter.getSelectionModel().select("All Actions");
+        if (userFilter != null) userFilter.getSelectionModel().select("All Users");
     }
 
     @FXML
     protected void onExportLogs() {
+        // Only outputs what is currently filtered and visible on screen!
+        if (filteredData.isEmpty()) {
+            showThemedAlert(Alert.AlertType.WARNING, "No Data", "There are no logs matching your current filters to export.");
+            return;
+        }
+
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Export System Logs");
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV File (*.csv)", "*.csv"));
@@ -273,16 +327,18 @@ public class LogsController {
 
         if (file != null) {
             try (PrintWriter writer = new PrintWriter(file)) {
-                // CSV structural headers
                 writer.println("Timestamp,User,Action,Details");
                 for (LogEntry log : filteredData) {
-                    // Escape details containing quotes or internal commas
-                    String cleanDetails = log.getDetails().replace("\"", "\"\"");
+                    String cleanDetails = log.getDetails() != null ? log.getDetails().replace("\"", "\"\"") : "";
                     writer.printf("\"%s\",\"%s\",\"%s\",\"%s\"%n",
                             log.getTimestamp(), log.getUsername(), log.getAction(), cleanDetails);
                 }
-                SystemLogger.logAction("Export", "Exported system logs to CSV.");
-            } catch (Exception e) { e.printStackTrace(); }
+                SystemLogger.logAction("Export", "Exported filtered system logs to CSV.");
+                showThemedAlert(Alert.AlertType.INFORMATION, "Export Successful", "Logs have been successfully exported to CSV.");
+            } catch (Exception e) {
+                e.printStackTrace();
+                showThemedAlert(Alert.AlertType.ERROR, "Export Failed", "Could not write to the selected file.");
+            }
         }
     }
 
@@ -290,12 +346,9 @@ public class LogsController {
     protected void onClearLogs() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Warning: Clear All Logs");
-
-        // CLEAN HEADER FIX: Delete the white box and move text to the body
         alert.setHeaderText(null);
         alert.setContentText("Are you sure you want to permanently delete all logs?");
 
-        // USE LOCAL THEME INJECTOR
         applyThemeToDialog(alert.getDialogPane());
 
         Optional<ButtonType> result = alert.showAndWait();
@@ -308,18 +361,20 @@ public class LogsController {
         }
     }
 
-    public static class LogEntry {
-        private final String timestamp, username, action, details;
-        public LogEntry(String timestamp, String username, String action, String details) {
-            this.timestamp = timestamp; this.username = username; this.action = action; this.details = details;
-        }
-        public String getTimestamp() { return timestamp; }
-        public String getUsername() { return username; }
-        public String getAction() { return action; }
-        public String getDetails() { return details; }
+    private void showThemedAlert(Alert.AlertType type, String title, String message) {
+        if (isAlertShowing) return;
+        isAlertShowing = true;
+
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+
+        applyThemeToDialog(alert.getDialogPane());
+        alert.showAndWait();
+        isAlertShowing = false;
     }
 
-    // --- THE TARGETED THEME HUNTER ---
     private void applyThemeToDialog(DialogPane dialogPane) {
         if (logsTable == null || logsTable.getScene() == null) return;
 
@@ -354,5 +409,16 @@ public class LogsController {
         if (!dialogPane.getStyleClass().contains("custom-dialog")) {
             dialogPane.getStyleClass().addAll("custom-dialog", "root");
         }
+    }
+
+    public static class LogEntry {
+        private final String timestamp, username, action, details;
+        public LogEntry(String timestamp, String username, String action, String details) {
+            this.timestamp = timestamp; this.username = username; this.action = action; this.details = details;
+        }
+        public String getTimestamp() { return timestamp; }
+        public String getUsername() { return username; }
+        public String getAction() { return action; }
+        public String getDetails() { return details; }
     }
 }

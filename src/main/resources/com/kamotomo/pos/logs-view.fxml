@@ -4,24 +4,23 @@
 
 <VBox spacing="20.0" xmlns:fx="http://javafx.com/fxml" fx:controller="com.kamotomo.pos.LogsController" style="-fx-background-color: transparent;">
 
-    <HBox alignment="CENTER_LEFT" spacing="15">
-        <VBox spacing="5">
-            <Label text="SYSTEM LOGS" style="-fx-text-fill: -kmtm-text; -fx-font-family: 'Bebas Neue', sans-serif; -fx-font-size: 28px; -fx-letter-spacing: 1px;"/>
-            <Label text="Audit trail of all system activities and user actions" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px;"/>
-        </VBox>
-        <Region HBox.hgrow="ALWAYS" />
+    <VBox spacing="5">
+        <Label text="SYSTEM LOGS" style="-fx-text-fill: -kmtm-text; -fx-font-family: 'Bebas Neue', sans-serif; -fx-font-size: 28px; -fx-letter-spacing: 1px;"/>
+        <Label text="Audit trail of all system activities and user actions" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px;"/>
+    </VBox>
 
-        <Button text="🖨 Export Logs" onAction="#onExportLogs" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 10 20; -fx-cursor: hand; -fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold; -fx-font-size: 13px;"/>
+    <HBox spacing="10" alignment="CENTER_LEFT" style="-fx-padding: 0 0 15 0;">
+        <TextField fx:id="searchField" promptText="Search details..." prefWidth="250" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-padding: 8;"/>
+        <DatePicker fx:id="dateFilter" promptText="Select Date" prefWidth="140" style="-fx-background-color: -kmtm-surface2;"/>
 
-        <Button text="⚠ Clear Logs" onAction="#onClearLogs" style="-fx-background-color: rgba(240,61,61,0.15); -fx-text-fill: #f03d3d; -fx-border-color: #f03d3d; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 10 20; -fx-cursor: hand; -fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold; -fx-font-size: 13px;"/>
-    </HBox>
+        <ComboBox fx:id="actionFilter" promptText="Action Type" prefWidth="160" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text;"/>
+        <ComboBox fx:id="userFilter" promptText="User" prefWidth="150" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text;"/>
 
-    <HBox alignment="CENTER_LEFT" spacing="15">
-        <TextField fx:id="searchField" promptText="🔍 Search logs by user or action..." prefWidth="300" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-padding: 10; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4;"/>
+        <Region HBox.hgrow="ALWAYS"/>
 
-        <DatePicker fx:id="dateFilter" promptText="Filter by Date" style="-fx-background-color: -kmtm-surface2;"/>
-
-        <Button text="↺ Reset Filters" onAction="#onResetFilters" style="-fx-background-color: transparent; -fx-text-fill: -kmtm-primary; -fx-border-color: -kmtm-primary; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 9 16; -fx-cursor: hand; -fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold; -fx-font-size: 13px;"/>
+        <Button text="↺ Reset Filters" onAction="#onResetFilters" style="-fx-background-color: -kmtm-surface; -fx-text-fill: -kmtm-text; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-cursor: hand; -fx-padding: 8 15;"/>
+        <Button text="📥 Export Filtered Logs" onAction="#onExportLogs" style="-fx-background-color: -kmtm-primary; -fx-text-fill: white; -fx-font-weight: bold; -fx-border-radius: 4; -fx-cursor: hand; -fx-padding: 8 15;"/>
+        <Button text="⚠ Clear Logs" onAction="#onClearLogs" style="-fx-background-color: rgba(240,61,61,0.15); -fx-text-fill: #f03d3d; -fx-border-color: #f03d3d; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: hand; -fx-font-weight: bold; -fx-padding: 8 15;"/>
     </HBox>
 
     <TableView fx:id="logsTable" VBox.vgrow="ALWAYS">
@@ -30,9 +29,7 @@
             <TableColumn fx:id="colUser" text="USER" prefWidth="150" />
             <TableColumn fx:id="colAction" text="ACTION" prefWidth="200" />
             <TableColumn fx:id="colDetails" text="DETAILS" prefWidth="350" />
-
             <TableColumn fx:id="colActionBtn" text="RECEIPT" prefWidth="100" />
-
         </columns>
         <columnResizePolicy>
             <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />

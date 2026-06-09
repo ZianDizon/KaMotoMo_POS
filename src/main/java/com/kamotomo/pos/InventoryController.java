@@ -247,7 +247,8 @@ public class InventoryController {
             stmt.setInt(2, p.getId());
             stmt.executeUpdate();
 
-            com.kamotomo.pos.utils.SystemLogger.logAction("Inventory", "Changed status of product ID " + p.getId() + " to " + newStatus);
+            // LOG NAME INSTEAD OF ID
+            com.kamotomo.pos.utils.SystemLogger.logAction("Inventory", "Changed status of product [" + p.getName() + "] to " + newStatus);
 
             String actionWord = newStatus.equals("Archived") ? "archived." : "restored and made active.";
             showSuccessPopup("Status Updated", "The product '" + p.getName() + "' has been successfully " + actionWord);
@@ -311,9 +312,16 @@ public class InventoryController {
         priceField.setPromptText("0.00");
         priceField.setStyle("-fx-padding: 8;");
 
+        // --- NEW: CONDITIONAL STOCK LOCKDOWN ---
         TextField stockField = new TextField();
-        stockField.setPromptText("0");
         stockField.setStyle("-fx-padding: 8;");
+        if (existingProduct != null) {
+            stockField.setEditable(false);
+            stockField.setDisable(true);
+            stockField.setTooltip(new Tooltip("Stock levels must be adjusted in the Stock Monitor module."));
+        } else {
+            stockField.setPromptText("Initial stock");
+        }
 
         ComboBox<String> supplierBox = new ComboBox<>();
         supplierBox.setEditable(true);
@@ -454,6 +462,23 @@ public class InventoryController {
                 return;
             }
 
+            // --- NEW: DUPLICATE NAME INTERCEPTOR ---
+            int currentEditingId = existingProduct != null ? existingProduct.getId() : -1;
+            try (Connection conn = DatabaseConnection.getConnection();
+                 PreparedStatement checkStmt = conn.prepareStatement("SELECT productID FROM PRODUCT WHERE LOWER(productName) = LOWER(?)")) {
+                checkStmt.setString(1, name);
+                ResultSet rs = checkStmt.executeQuery();
+                if (rs.next()) {
+                    if (rs.getInt("productID") != currentEditingId) {
+                        showErrorPopup("Duplicate Name Detected", "A product named '" + name + "' already exists in the database. Please use a unique name.");
+                        event.consume();
+                        return;
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
             if (catBox.getValue() == null) {
                 showErrorPopup("Missing Category", "Please click the dropdown menu and select a Category for this product.");
                 event.consume();
@@ -516,7 +541,8 @@ public class InventoryController {
                     try (Connection conn = DatabaseConnection.getConnection()) {
                         if (existingProduct == null) {
                             String sql = "INSERT INTO PRODUCT (productName, category, price, stockQuantity, status, supplierLeadTimeDays, safetyStock, orderCost, holdingCost, supplierName) VALUES (?, ?, ?, ?, 'Active', ?, ?, ?, ?, ?)";
-                            com.kamotomo.pos.utils.SystemLogger.logAction("Inventory", "Added new product: " + name);
+                            // LOG PRODUCT NAME
+                            com.kamotomo.pos.utils.SystemLogger.logAction("Inventory", "Added new product: [" + name + "]");
                             PreparedStatement stmt = conn.prepareStatement(sql);
                             stmt.setString(1, name); stmt.setString(2, cat); stmt.setDouble(3, price); stmt.setInt(4, stock);
                             stmt.setInt(5, leadTime); stmt.setInt(6, safetyStock); stmt.setDouble(7, orderCost); stmt.setDouble(8, holdingCost);
@@ -526,7 +552,8 @@ public class InventoryController {
                             showSuccessPopup("Product Added", "You have successfully added '" + name + "' to the active inventory.");
                         } else {
                             String sql = "UPDATE PRODUCT SET productName=?, category=?, price=?, stockQuantity=?, supplierLeadTimeDays=?, safetyStock=?, orderCost=?, holdingCost=?, supplierName=? WHERE productID=?";
-                            com.kamotomo.pos.utils.SystemLogger.logAction("Inventory", "Updated product ID " + existingProduct.getId() + " - Reason: " + reason);
+                            // LOG PRODUCT NAME AND REASON
+                            com.kamotomo.pos.utils.SystemLogger.logAction("Inventory", "Updated product: [" + name + "] - Reason: " + reason);
                             PreparedStatement stmt = conn.prepareStatement(sql);
                             stmt.setString(1, name); stmt.setString(2, cat); stmt.setDouble(3, price); stmt.setInt(4, stock);
                             stmt.setInt(5, leadTime); stmt.setInt(6, safetyStock); stmt.setDouble(7, orderCost); stmt.setDouble(8, holdingCost);
@@ -538,11 +565,7 @@ public class InventoryController {
                         }
                     }
                     loadDataFromDatabase();
-                } catch (java.sql.SQLIntegrityConstraintViolationException e) {
-                    // This specifically catches actual duplicates or strict database constraints
-                    showErrorPopup("Database Conflict", "The system rejected the entry. This usually means the Product Name already exists in the system.\n\nMySQL Output: " + e.getMessage());
                 } catch (Exception e) {
-                    // This catches everything else (Foreign Key failures, disconnection, etc.)
                     e.printStackTrace();
                     showErrorPopup("System Error", "An unexpected database error occurred while saving.\n\nMySQL Output: " + e.getMessage());
                 }

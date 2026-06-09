@@ -13,6 +13,7 @@
         </VBox>
         <Region HBox.hgrow="ALWAYS" />
         <ComboBox fx:id="timeframeBox" prefWidth="150" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-font-family: 'IBM Plex Mono';"/>
+        <ComboBox fx:id="topCountBox" prefWidth="150" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-font-family: 'IBM Plex Mono';"/>
         <Button text="🖨 Export Report" onAction="#onExportReport" style="-fx-background-color: -kmtm-primary; -fx-text-fill: white; -fx-font-family: 'IBM Plex Mono'; -fx-font-weight: bold; -fx-padding: 8 15; -fx-border-radius: 4; -fx-background-radius: 4; -fx-cursor: hand;"/>
     </HBox>
 
@@ -38,7 +39,7 @@
     <HBox spacing="15" VBox.vgrow="ALWAYS">
 
         <VBox style="-fx-background-color: -kmtm-surface; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 15;" HBox.hgrow="ALWAYS">
-            <Label text="TOP 5 BEST SELLING ITEMS" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px; -fx-letter-spacing: 1px;"/>
+            <Label fx:id="lblTopSellersTitle" text="TOP 5 BEST SELLING ITEMS" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px; -fx-letter-spacing: 1px;"/>
             <BarChart fx:id="topSellersChart" animated="true" legendVisible="false" VBox.vgrow="ALWAYS">
                 <xAxis><CategoryAxis fx:id="xAxis" animated="false" /></xAxis>
                 <yAxis><NumberAxis fx:id="yAxis" animated="false" label="Units Sold"/></yAxis>

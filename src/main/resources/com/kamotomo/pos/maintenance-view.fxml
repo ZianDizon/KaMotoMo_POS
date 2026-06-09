@@ -3,30 +3,69 @@
 <?import javafx.scene.control.*?>
 <?import javafx.geometry.Insets?>
 
-<VBox fx:id="maintenanceRoot" spacing="20.0" prefWidth="1000.0" prefHeight="700.0" xmlns:fx="http://javafx.com/fxml" fx:controller="com.kamotomo.pos.MaintenanceController" style="-fx-background-color: transparent;">
+<VBox fx:id="maintenanceRoot" spacing="20.0" prefWidth="1000.0" prefHeight="700.0" xmlns:fx="http://javafx.com/fxml" fx:controller="com.kamotomo.pos.MaintenanceController" style="-fx-background-color: transparent; -fx-padding: 20;">
 
-    <VBox spacing="5">
+    <VBox spacing="5" VBox.vgrow="NEVER">
         <Label text="SYSTEM MAINTENANCE" style="-fx-text-fill: -kmtm-text; -fx-font-family: 'Bebas Neue', sans-serif; -fx-font-size: 28px; -fx-letter-spacing: 1px;"/>
-        <Label text="Database backups and system integrity tools" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px;"/>
+        <Label text="Database backups, system configuration, and data integrity tools" style="-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 11px;"/>
     </VBox>
 
-    <HBox spacing="20" VBox.vgrow="ALWAYS">
-        <VBox spacing="15" style="-fx-background-color: -kmtm-surface; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 25;" HBox.hgrow="ALWAYS">
-            <Label text="DATABASE BACKUP" style="-fx-text-fill: -kmtm-primary; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 14px; -fx-font-weight: bold;"/>
-            <Label text="Generate a complete snapshot of all inventory, users, and transaction records. Store this file securely off-site (e.g., Google Drive or a USB flash drive) to prevent data loss in case of hardware failure." wrapText="true" style="-fx-text-fill: -kmtm-text-dim; -fx-font-size: 13px; -fx-line-spacing: 4px;"/>
+    <GridPane hgap="20" vgap="20" VBox.vgrow="ALWAYS">
+        <columnConstraints>
+            <ColumnConstraints percentWidth="50"/>
+            <ColumnConstraints percentWidth="50"/>
+        </columnConstraints>
+        <rowConstraints>
+            <RowConstraints percentHeight="50"/>
+            <RowConstraints percentHeight="50"/>
+        </rowConstraints>
+
+        <VBox spacing="15" style="-fx-background-color: -kmtm-surface; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 25;" GridPane.columnIndex="0" GridPane.rowIndex="0">
+            <Label text="⚙ SYSTEM CONFIGURATION" style="-fx-text-fill: -kmtm-text; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 14px; -fx-font-weight: bold;"/>
+            <Label text="Update tax rates and dynamic discounts. Applies to all future transactions." wrapText="true" style="-fx-text-fill: -kmtm-text-dim; -fx-font-size: 13px; -fx-line-spacing: 4px;"/>
+
+            <GridPane hgap="15" vgap="15">
+                <VBox spacing="5" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                    <Label text="VAT Rate (%)" style="-fx-text-fill: -kmtm-text-dim; -fx-font-size: 11px;"/>
+                    <TextField fx:id="vatRateField" prefWidth="120" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 6 10;"/>
+                </VBox>
+                <VBox spacing="5" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                    <Label text="SC/PWD (%)" style="-fx-text-fill: -kmtm-text-dim; -fx-font-size: 11px;"/>
+                    <TextField fx:id="scPwdDiscountField" prefWidth="120" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 6 10;"/>
+                </VBox>
+                <VBox spacing="5" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                    <Label text="Wholesale (%)" style="-fx-text-fill: -kmtm-text-dim; -fx-font-size: 11px;"/>
+                    <TextField fx:id="wholesaleDiscountField" prefWidth="120" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 6 10;"/>
+                </VBox>
+                <VBox spacing="5" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                    <Label text="Employee (%)" style="-fx-text-fill: -kmtm-text-dim; -fx-font-size: 11px;"/>
+                    <TextField fx:id="employeeDiscountField" prefWidth="120" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 6 10;"/>
+                </VBox>
+            </GridPane>
 
             <Region VBox.vgrow="ALWAYS"/>
-
-            <Button text="💾 Generate Local Backup (.sql)" onAction="#onBackupDatabase" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-cursor: hand; -fx-padding: 10 20; -fx-font-weight: bold;"/>
+            <Button text="💾 Save Config" onAction="#onSaveConfigClick" maxWidth="Infinity" style="-fx-background-color: -kmtm-primary; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10; -fx-cursor: hand; -fx-border-radius: 4; -fx-background-radius: 4;"/>
         </VBox>
 
-        <VBox spacing="15" style="-fx-background-color: -kmtm-surface; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 25;" HBox.hgrow="ALWAYS">
-            <Label text="DATABASE RESTORE" style="-fx-text-fill: #f03d3d; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 14px; -fx-font-weight: bold;"/>
-            <Label text="WARNING: Importing a backup file will permanently overwrite all current system data. Only perform this action if the database has been corrupted or you are migrating to a new computer." wrapText="true" style="-fx-text-fill: -kmtm-text-dim; -fx-font-size: 13px; -fx-line-spacing: 4px;"/>
-
+        <VBox spacing="15" style="-fx-background-color: -kmtm-surface; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 25;" GridPane.columnIndex="1" GridPane.rowIndex="0">
+            <Label text="🔄 OFFLINE DATA SYNC" style="-fx-text-fill: #3adf8a; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 14px; -fx-font-weight: bold;"/>
+            <Label text="Manually push locally stored offline sales to the central database after a network failure." wrapText="true" style="-fx-text-fill: -kmtm-text-dim; -fx-font-size: 13px; -fx-line-spacing: 4px;"/>
             <Region VBox.vgrow="ALWAYS"/>
-
-            <Button text="⚠ Import Backup File" onAction="#onRestoreDatabase" style="-fx-background-color: rgba(240,61,61,0.15); -fx-text-fill: #f03d3d; -fx-border-color: #f03d3d; -fx-border-radius: 4; -fx-cursor: hand; -fx-padding: 10 20; -fx-font-weight: bold;"/>
+            <Button text="☁ Sync Offline Sales to Database" onAction="#onSyncOfflineClick" maxWidth="Infinity" style="-fx-background-color: rgba(58,223,138,0.15); -fx-text-fill: #3adf8a; -fx-border-color: #3adf8a; -fx-border-radius: 4; -fx-cursor: hand; -fx-padding: 10; -fx-font-weight: bold;"/>
         </VBox>
-    </HBox>
+
+        <VBox spacing="15" style="-fx-background-color: -kmtm-surface; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 25;" GridPane.columnIndex="0" GridPane.rowIndex="1">
+            <Label text="🛡 DATABASE BACKUP" style="-fx-text-fill: -kmtm-primary; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 14px; -fx-font-weight: bold;"/>
+            <Label text="Generate a complete snapshot of all inventory, users, and transaction records. Requires Administrator Authentication." wrapText="true" style="-fx-text-fill: -kmtm-text-dim; -fx-font-size: 13px; -fx-line-spacing: 4px;"/>
+            <Region VBox.vgrow="ALWAYS"/>
+            <Button text="💾 Generate Local Backup (.sql)" onAction="#onBackupDatabase" maxWidth="Infinity" style="-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-cursor: hand; -fx-padding: 10; -fx-font-weight: bold;"/>
+        </VBox>
+
+        <VBox spacing="15" style="-fx-background-color: -kmtm-surface; -fx-border-color: -kmtm-border; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 25;" GridPane.columnIndex="1" GridPane.rowIndex="1">
+            <Label text="⚠ DATABASE RESTORE" style="-fx-text-fill: #f03d3d; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 14px; -fx-font-weight: bold;"/>
+            <Label text="WARNING: Importing a backup file will permanently overwrite all current system data. Requires Administrator Authentication." wrapText="true" style="-fx-text-fill: -kmtm-text-dim; -fx-font-size: 13px; -fx-line-spacing: 4px;"/>
+            <Region VBox.vgrow="ALWAYS"/>
+            <Button text="⚠ Import Backup File" onAction="#onRestoreDatabase" maxWidth="Infinity" style="-fx-background-color: rgba(240,61,61,0.15); -fx-text-fill: #f03d3d; -fx-border-color: #f03d3d; -fx-border-radius: 4; -fx-cursor: hand; -fx-padding: 10; -fx-font-weight: bold;"/>
+        </VBox>
+    </GridPane>
 </VBox>

@@ -15,10 +15,21 @@ import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.util.Duration;
+
+import java.io.File;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.Scanner;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class DashboardController {
 
@@ -47,9 +58,13 @@ public class DashboardController {
     @FXML private javafx.scene.control.Label clockLabel;
     @FXML private javafx.scene.control.Label screenTitle;
 
+    private ScheduledExecutorService autoSyncService;
+
+    // --- NEW: Heartbeat Status Tracker ---
+    private boolean isDbOnline = true;
+
     @FXML
     public void initialize() {
-        // --- REAL-TIME CLOCK SETUP ---
         if (clockLabel != null) {
             clockLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: -kmtm-primary; -fx-font-weight: bold;");
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE, MMM dd, yyyy, hh:mm:ss a");
@@ -63,10 +78,215 @@ public class DashboardController {
         setupDynamicUserProfile();
         enforceRoleRestrictions();
 
+        startAutoSyncDaemon();
+
         onOverviewButtonClick();
     }
 
-    // --- DYNAMIC USER PROFILE UPDATE ---
+    // --- REVISION: Dynamic Toast Notifications ---
+    private void showToastNotification(String message, String bgColor) {
+        javafx.application.Platform.runLater(() -> {
+            javafx.scene.control.Label toastLabel = new javafx.scene.control.Label(message);
+            toastLabel.setStyle("-fx-background-color: " + bgColor + "; -fx-text-fill: white; -fx-padding: 12 24; -fx-background-radius: 30; -fx-font-family: 'IBM Plex Sans'; -fx-font-weight: bold; -fx-font-size: 14px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0, 0, 4);");
+
+            StackPane.setAlignment(toastLabel, javafx.geometry.Pos.TOP_CENTER);
+            StackPane.setMargin(toastLabel, new javafx.geometry.Insets(30, 0, 0, 0));
+
+            contentArea.getChildren().add(toastLabel);
+
+            javafx.animation.FadeTransition fadeIn = new javafx.animation.FadeTransition(javafx.util.Duration.millis(400), toastLabel);
+            fadeIn.setFromValue(0.0);
+            fadeIn.setToValue(1.0);
+
+            javafx.animation.FadeTransition fadeOut = new javafx.animation.FadeTransition(javafx.util.Duration.millis(600), toastLabel);
+            fadeOut.setFromValue(1.0);
+            fadeOut.setToValue(0.0);
+            fadeOut.setDelay(javafx.util.Duration.seconds(4));
+            fadeOut.setOnFinished(e -> contentArea.getChildren().remove(toastLabel));
+
+            fadeIn.play();
+            fadeIn.setOnFinished(e -> fadeOut.play());
+        });
+    }
+
+    // --- REVISION: The Heartbeat Monitor ---
+    private void startAutoSyncDaemon() {
+        autoSyncService = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r);
+            t.setDaemon(true);
+            return t;
+        });
+
+        // Pings the database every 5 seconds
+        autoSyncService.scheduleAtFixedRate(() -> {
+            boolean currentStatus = false;
+            try (Connection conn = com.kamotomo.pos.database.DatabaseConnection.getConnection()) {
+                if (conn != null && conn.isValid(2)) {
+                    currentStatus = true;
+                }
+            } catch (Exception e) {
+                // Connection failed
+            }
+
+            final boolean isNowOnline = currentStatus;
+
+            // If the state has changed since the last check, update the UI
+            if (isNowOnline != isDbOnline) {
+                isDbOnline = isNowOnline;
+                javafx.application.Platform.runLater(() -> handleConnectionChange(isNowOnline));
+            }
+
+            // Only attempt file sync if we are online
+            if (isNowOnline) {
+                checkAndSyncOfflineData();
+            }
+        }, 2, 5, TimeUnit.SECONDS);
+    }
+
+    // --- NEW: Dynamic Navigation Lockdown ---
+    private void handleConnectionChange(boolean isOnline) {
+        if (!isOnline) {
+            // OFFLINE LOCKDOWN
+            overviewBtn.setDisable(true);
+            inventoryBtn.setDisable(true);
+            stockMonitorBtn.setDisable(true);
+            reportsBtn.setDisable(true);
+            usersBtn.setDisable(true);
+            logsBtn.setDisable(true);
+            maintenanceBtn.setDisable(true);
+
+            showToastNotification("⚠️ Database Offline: Restricted to POS Mode.", "#f03d3d");
+
+            // Auto-redirect if they are somewhere they shouldn't be
+            String currentTitle = screenTitle != null ? screenTitle.getText() : "";
+            if (!currentTitle.equals("POINT OF SALE") && !currentTitle.equals("HELP & SUPPORT")) {
+                onPosButtonClick();
+            }
+        } else {
+            // ONLINE RESTORE
+            overviewBtn.setDisable(false);
+            inventoryBtn.setDisable(false);
+            stockMonitorBtn.setDisable(false);
+            reportsBtn.setDisable(false);
+            usersBtn.setDisable(false);
+            logsBtn.setDisable(false);
+            maintenanceBtn.setDisable(false);
+
+            enforceRoleRestrictions(); // Re-hide admin buttons if user is an Employee
+            showToastNotification("✅ Database Online: Full access restored.", "#3adf8a");
+        }
+    }
+
+    private void checkAndSyncOfflineData() {
+        File file = new File("offline_sales.csv");
+        if (!file.exists()) return;
+
+        try (Connection conn = com.kamotomo.pos.database.DatabaseConnection.getConnection()) {
+            if (conn == null || !conn.isValid(2)) return;
+
+            conn.setAutoCommit(false);
+            int successCount = 0;
+            List<String> detailedReceiptLogs = new ArrayList<>();
+
+            try (Scanner scanner = new Scanner(file)) {
+                String txSql = "INSERT INTO TRANSACTION (transactionDate, userID, totalAmount, paymentMethod, discountAmount, discountReason, amountTendered, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'Completed')";
+                PreparedStatement txStmt = conn.prepareStatement(txSql, java.sql.Statement.RETURN_GENERATED_KEYS);
+
+                String detailsSql = "INSERT INTO TRANSACTION_DETAILS (transactionID, productID, quantity, subtotal) VALUES (?, ?, ?, ?)";
+                PreparedStatement detailsStmt =prepareStatement(conn, detailsSql);
+
+                String stockSql = "UPDATE PRODUCT SET stockQuantity = stockQuantity - ? WHERE productID = ?";
+                PreparedStatement stockStmt = prepareStatement(conn, stockSql);
+
+                while (scanner.hasNextLine()) {
+                    String line = scanner.nextLine();
+                    if (line.trim().isEmpty()) continue;
+
+                    String[] parts = line.split("\\|");
+                    if (parts.length < 9) continue;
+
+                    String dateStr = parts[0];
+                    int userId = Integer.parseInt(parts[1]);
+                    double total = Double.parseDouble(parts[2]);
+                    double tendered = Double.parseDouble(parts[3]);
+                    double discount = Double.parseDouble(parts[4]);
+                    String reason = parts[5];
+                    String payMethod = parts[6];
+                    String itemsData = parts[8];
+
+                    txStmt.setString(1, dateStr);
+                    txStmt.setInt(2, userId);
+                    txStmt.setDouble(3, total);
+                    txStmt.setString(4, payMethod);
+                    txStmt.setDouble(5, discount);
+                    txStmt.setString(6, reason);
+                    txStmt.setDouble(7, tendered);
+                    txStmt.executeUpdate();
+
+                    ResultSet rs = txStmt.getGeneratedKeys();
+                    int newTxId = 0;
+                    if (rs.next()) newTxId = rs.getInt(1);
+
+                    StringBuilder digitalReceipt = new StringBuilder("Offline Sale #").append(newTxId)
+                            .append(" (").append(dateStr).append(") | Total: ₱").append(String.format("%.2f", total)).append(" | Items: [");
+
+                    String[] items = itemsData.split(";");
+                    for (String itemStr : items) {
+                        if (itemStr.isEmpty()) continue;
+                        String[] itemParts = itemStr.split(",");
+                        int prodId = Integer.parseInt(itemParts[0]);
+                        int qty = Integer.parseInt(itemParts[1]);
+                        double sub = Double.parseDouble(itemParts[2]);
+
+                        detailsStmt.setInt(1, newTxId);
+                        detailsStmt.setInt(2, prodId);
+                        detailsStmt.setInt(3, qty);
+                        detailsStmt.setDouble(4, sub);
+                        detailsStmt.addBatch();
+
+                        stockStmt.setInt(1, qty);
+                        stockStmt.setInt(2, prodId);
+                        stockStmt.addBatch();
+
+                        digitalReceipt.append(" ID-").append(prodId).append("(").append(qty).append("x) ");
+                    }
+                    digitalReceipt.append("]");
+                    detailedReceiptLogs.add(digitalReceipt.toString());
+
+                    detailsStmt.executeBatch();
+                    stockStmt.executeBatch();
+                    successCount++;
+                }
+
+                conn.commit();
+
+                for (String receiptLog : detailedReceiptLogs) {
+                    com.kamotomo.pos.utils.SystemLogger.logAction("Transaction (Offline)", receiptLog);
+                }
+
+                com.kamotomo.pos.utils.SystemLogger.logAction("System Auto-Sync", "Background thread pushed " + successCount + " offline transactions.");
+
+                final int finalCount = successCount;
+                showToastNotification("🔄 Cloud Sync Complete: " + finalCount + " offline records restored!", "#8b5cf6");
+
+            } catch (Exception e) {
+                conn.rollback();
+                throw e;
+            }
+
+            File archiveFile = new File("offline_sales_synced_" + System.currentTimeMillis() + ".csv");
+            file.renameTo(archiveFile);
+
+        } catch (Exception e) {
+            // DB still off, fail silently
+        }
+    }
+
+    // Helper to prevent repeated code logic
+    private PreparedStatement prepareStatement(Connection conn, String sql) throws java.sql.SQLException {
+        return conn.prepareStatement(sql);
+    }
+
     private void setupDynamicUserProfile() {
         String name = com.kamotomo.pos.utils.UserSession.getInstance().getName();
         String role = com.kamotomo.pos.utils.UserSession.getInstance().getRole();
@@ -80,19 +300,16 @@ public class DashboardController {
         }
         if (userRoleLabel != null) {
             userRoleLabel.setText(role.toUpperCase());
-            // Make the employee role text look less "admin-like" (dimmer color)
             if ("Employee".equalsIgnoreCase(role)) {
                 userRoleLabel.setStyle("-fx-text-fill: -kmtm-text-dim; -fx-font-family: 'IBM Plex Mono'; -fx-font-size: 10px; -fx-font-weight: bold; -fx-letter-spacing: 1px;");
             }
         }
     }
 
-    // --- ROLE-BASED ACCESS CONTROL (RBAC) ---
     private void enforceRoleRestrictions() {
         String role = com.kamotomo.pos.utils.UserSession.getInstance().getRole();
 
         if ("Employee".equalsIgnoreCase(role)) {
-            // Hide the actual section text
             if (adminSectionLabel != null) {
                 adminSectionLabel.setVisible(false);
                 adminSectionLabel.setManaged(false);
@@ -109,7 +326,6 @@ public class DashboardController {
                 logsBtn.setVisible(false);
                 logsBtn.setManaged(false);
             }
-            // --- ADDED MAINTENANCE BUTTON LOCKDOWN ---
             if (maintenanceBtn != null) {
                 maintenanceBtn.setVisible(false);
                 maintenanceBtn.setManaged(false);
@@ -117,7 +333,6 @@ public class DashboardController {
         }
     }
 
-    // --- VISUAL ROUTING LOGIC ---
     private void setActiveButton(Button activeBtn) {
         String inactiveStyle = "-fx-background-color: transparent; -fx-text-fill: -kmtm-text-dim; -fx-border-width: 0 0 0 4; -fx-border-color: transparent; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 12 20 12 25; -fx-cursor: hand; -fx-font-family: 'IBM Plex Sans', sans-serif;";
         String activeStyle = "-fx-background-color: -kmtm-primary-glow; -fx-text-fill: -kmtm-primary; -fx-border-width: 0 0 0 4; -fx-border-color: -kmtm-primary; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 12 20 12 25; -fx-cursor: hand; -fx-font-family: 'IBM Plex Sans', sans-serif;";
@@ -147,7 +362,6 @@ public class DashboardController {
         }
     }
 
-    // --- BUTTON CLICK LISTENERS ---
     @FXML protected void onOverviewButtonClick() { setActiveButton(overviewBtn); if (screenTitle != null) screenTitle.setText("DASHBOARD"); loadModule("overview-view.fxml"); }
     @FXML protected void onPosButtonClick() { setActiveButton(posBtn); if (screenTitle != null) screenTitle.setText("POINT OF SALE"); loadModule("pos-view.fxml"); }
     @FXML protected void onInventoryButtonClick() { setActiveButton(inventoryBtn); if (screenTitle != null) screenTitle.setText("INVENTORY"); loadModule("inventory-view.fxml"); }
@@ -175,7 +389,6 @@ public class DashboardController {
         }
     }
 
-    // --- UPDATED LOGOUT METHOD WITH CONFIRMATION ---
     @FXML
     protected void onLogoutClick() {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
@@ -188,22 +401,19 @@ public class DashboardController {
         Optional<ButtonType> result = confirm.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
-                // 1. Log the action
-                com.kamotomo.pos.utils.SystemLogger.logAction("System", "User logged out.");
+                if (autoSyncService != null && !autoSyncService.isShutdown()) {
+                    autoSyncService.shutdownNow();
+                }
 
-                // 2. Clear the session entirely
+                com.kamotomo.pos.utils.SystemLogger.logAction("System", "User logged out.");
                 com.kamotomo.pos.utils.UserSession.getInstance().clearSession();
 
-                // 3. Load the Login Screen
                 FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource("hello-view.fxml"));
                 Scene scene = new Scene(fxmlLoader.load(), 400, 500);
 
-                // --- FIX: THE STRICT LIGHT MODE ENFORCER ---
-                // Ignore all user preferences, clear inherited styles, and forcefully apply light theme
                 scene.getStylesheets().clear();
                 scene.getStylesheets().add(getClass().getResource("/light-theme.css").toExternalForm());
 
-                // 5. Setup the stage
                 Stage stage = (Stage) contentArea.getScene().getWindow();
                 stage.setMaximized(false);
                 stage.setWidth(400);
@@ -248,7 +458,6 @@ public class DashboardController {
         }
     }
 
-    // --- THE TARGETED THEME HUNTER (Replaced old static method) ---
     private void applyThemeToDialog(DialogPane dialogPane) {
         if (contentArea == null || contentArea.getScene() == null) return;
 
