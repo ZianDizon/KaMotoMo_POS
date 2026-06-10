@@ -321,7 +321,7 @@ public class StockMonitorController {
         });
     }
 
-    // --- NEW: ADJUST STOCK DIALOG (SUPPORTS ADDITION AND REDUCTION) ---
+    // --- UPDATED: ADJUST STOCK DIALOG (REASON STRICTLY MANDATORY FOR ALL ACTIONS) ---
     private void showAdjustStockDialog(StockItem item) {
         Dialog<Void> dialog = new Dialog<>();
         dialog.setTitle("Adjust Stock Level");
@@ -336,19 +336,20 @@ public class StockMonitorController {
         infoLbl.setStyle("-fx-font-family: 'IBM Plex Sans'; -fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: -kmtm-text;");
 
         ComboBox<String> actionBox = new ComboBox<>();
-        actionBox.getItems().addAll("Add Stock (Delivery)", "Deduct Stock (Damaged/Lost)");
+        actionBox.getItems().addAll("Add Stock (Manual Count/Extra)", "Deduct Stock (Damaged/Lost)");
         actionBox.getSelectionModel().selectFirst();
         actionBox.setStyle("-fx-background-color: -kmtm-surface2; -fx-text-fill: -kmtm-text;");
         actionBox.setMaxWidth(Double.MAX_VALUE);
 
         TextField qtyField = new TextField();
         qtyField.setPromptText("Quantity");
-        qtyField.setText(String.valueOf(item.getEoq())); // Default to EOQ recommendation
+        qtyField.setText(String.valueOf(item.getEoq()));
         qtyField.setTextFormatter(new TextFormatter<>(change -> change.getControlNewText().matches("\\d*") ? change : null));
         qtyField.setStyle("-fx-padding: 8;");
 
         TextField reasonField = new TextField();
-        reasonField.setPromptText("Reason (Mandatory for deductions)");
+        // Updated placeholder text
+        reasonField.setPromptText("Reason (Mandatory for audit trail)");
         reasonField.setStyle("-fx-padding: 8;");
 
         content.getChildren().addAll(infoLbl, new Label("Action:"), actionBox, new Label("Quantity:"), qtyField, new Label("Reason:"), reasonField);
@@ -369,8 +370,10 @@ public class StockMonitorController {
                 event.consume();
                 return;
             }
-            if (actionBox.getValue().contains("Deduct") && reasonField.getText().trim().isEmpty()) {
-                showThemedAlert(Alert.AlertType.WARNING, "Reason Required", "Please provide a clear reason for deducting stock to maintain the system audit trail.");
+
+            // THE FIX: Reason is now universally required regardless of addition or deduction
+            if (reasonField.getText().trim().isEmpty()) {
+                showThemedAlert(Alert.AlertType.WARNING, "Reason Required", "Please provide a clear reason for this manual stock adjustment to maintain the system audit trail.");
                 event.consume();
                 return;
             }
@@ -381,7 +384,6 @@ public class StockMonitorController {
                 int qty = Integer.parseInt(qtyField.getText());
                 boolean isDeduct = actionBox.getValue().contains("Deduct");
                 String reason = reasonField.getText().trim();
-                if (reason.isEmpty()) reason = "Standard Restock";
 
                 int dbChange = isDeduct ? -qty : qty;
                 try (Connection conn = DatabaseConnection.getConnection()) {
@@ -391,7 +393,7 @@ public class StockMonitorController {
                     stmt.executeUpdate();
 
                     String logMsg = (isDeduct ? "Deducted " : "Added ") + qty + " units to [" + item.getName() + "]. Reason: " + reason;
-                    SystemLogger.logAction("Stock Monitor", logMsg);
+                    com.kamotomo.pos.utils.SystemLogger.logAction("Stock Monitor", logMsg);
 
                     loadInventoryData();
                 } catch (Exception e) { e.printStackTrace(); }
